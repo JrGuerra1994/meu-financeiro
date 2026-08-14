@@ -130,13 +130,13 @@
         </div>
 
         <header>
-            <h1>Gestão Financeira & Fluxo de Caixa</h1>
+            <h1>Gestão Financeira & Fluxo de Caixa Real</h1>
         </header>
 
         <div class="nav-tabs">
-            <button class="tab-btn active" onclick="switchTab('tab-receitas')">💰 Receitas</button>
+            <button class="tab-btn active" onclick="switchTab('tab-receitas')">💰 Receitas (Créditos)</button>
             <button class="tab-btn" onclick="switchTab('tab-despesas')">💳 Despesas e Empréstimos</button>
-            <button class="tab-btn" onclick="switchTab('tab-fluxo')">📊 Fluxo de Caixa Consolidado</button>
+            <button class="tab-btn" onclick="switchTab('tab-fluxo')">📊 Fluxo de Caixa (Débito x Crédito)</button>
         </div>
 
         <!-- SELETOR DINÂMICO DE PERÍODO E STATUS -->
@@ -162,9 +162,9 @@
                     <label>Status do Lançamento</label>
                     <select id="filtro-status" onchange="aplicarFiltros()">
                         <option value="todos" selected>Todos os Status</option>
-                        <option value="realizado">✅ Realizados / Quitados</option>
-                        <option value="pendente">⏳ Pendentes / Previstos</option>
-                        <option value="vencido">🚨 Vencidos em Atraso</option>
+                        <option value="quitado">✅ Quitado / Realizado</option>
+                        <option value="pendente">⏳ Pendente / Previsto</option>
+                        <option value="vencido">🚨 Vencido em Atraso</option>
                     </select>
                 </div>
 
@@ -207,12 +207,12 @@
         <!-- ABA 1: RECEITAS -->
         <div id="tab-receitas" class="tab-content active">
             <div class="card">
-                <div class="card-header"><div class="card-title" id="title-rec-form">Nova Receita</div></div>
+                <div class="card-header"><div class="card-title" id="title-rec-form">Nova Receita (Crédito)</div></div>
                 <div class="form-grid">
                     <div class="form-group"><label>Descrição</label><input type="text" id="rec-desc" placeholder="Ex: Salário, Freelance"></div>
                     <div class="form-group"><label>Valor (R$)</label><input type="number" id="rec-valor" step="0.01" placeholder="4500.00"></div>
-                    <div class="form-group"><label>Data</label><input type="date" id="rec-data"></div>
-                    <div class="form-group"><label>Conta</label>
+                    <div class="form-group"><label>Data de Recebimento</label><input type="date" id="rec-data"></div>
+                    <div class="form-group"><label>Conta de Destino</label>
                         <select id="rec-conta">
                             <option value="Conta A">Conta A (Entradas)</option>
                             <option value="Conta B">Conta B (Variável)</option>
@@ -238,9 +238,9 @@
         <!-- ABA 2: DESPESAS E EMPRÉSTIMOS -->
         <div id="tab-despesas" class="tab-content">
             <div class="summary-grid">
-                <div class="summary-card"><div class="label">Total Devido (Filtrado)</div><div class="value" id="desp-summary-total">R$ 0,00</div></div>
+                <div class="summary-card"><div class="label">Total Compromissos</div><div class="value" id="desp-summary-total">R$ 0,00</div></div>
                 <div class="summary-card" style="border-left: 4px solid var(--danger);"><div class="label" style="color:var(--danger)">Vencidos</div><div class="value" id="desp-summary-vencidas" style="color:var(--danger)">R$ 0,00</div></div>
-                <div class="summary-card" style="border-left: 4px solid var(--success);"><div class="label" style="color:var(--success)">Total Pago/Baixado</div><div class="value" id="desp-summary-liquidadas" style="color:var(--success)">R$ 0,00</div></div>
+                <div class="summary-card" style="border-left: 4px solid var(--success);"><div class="label" style="color:var(--success)">Total Quitado</div><div class="value" id="desp-summary-liquidadas" style="color:var(--success)">R$ 0,00</div></div>
             </div>
 
             <div class="card">
@@ -283,29 +283,30 @@
             </div>
         </div>
 
-        <!-- ABA 3: FLUXO DE CAIXA CONSOLIDADO -->
+        <!-- ABA 3: FLUXO DE CAIXA CONSOLIDADO (LIVRO CAIXA REAL) -->
         <div id="tab-fluxo" class="tab-content">
             <div class="summary-grid">
-                <div class="summary-card"><div class="label">Entradas (No Filtro)</div><div class="value" id="fc-total-receitas" style="color:var(--success)">R$ 0,00</div></div>
-                <div class="summary-card"><div class="label">Saídas (No Filtro)</div><div class="value" id="fc-total-despesas" style="color:var(--danger)">R$ 0,00</div></div>
-                <div class="summary-card" id="card-saldo-resultado"><div class="label">Resultado Líquido</div><div class="value" id="fc-resultado-liquido">R$ 0,00</div></div>
+                <div class="summary-card"><div class="label">Total Entradas (Crédito)</div><div class="value" id="fc-total-receitas" style="color:var(--success)">R$ 0,00</div></div>
+                <div class="summary-card"><div class="label">Total Saídas (Débitos Quitados)</div><div class="value" id="fc-total-despesas" style="color:var(--danger)">R$ 0,00</div></div>
+                <div class="summary-card" id="card-saldo-resultado"><div class="label">Saldo Efetivo em Caixa</div><div class="value" id="fc-resultado-liquido">R$ 0,00</div></div>
             </div>
 
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">📈 Extrato Detalhado do Fluxo de Caixa (Linha do Tempo)</div>
+                    <div class="card-title">📖 Livro Caixa Detalhado (Débito x Crédito em Ordem Cronológica)</div>
                 </div>
                 <div class="table-responsive">
                     <table>
                         <thead>
                             <tr>
                                 <th>Data</th>
-                                <th>Tipo</th>
-                                <th>Descrição</th>
+                                <th>Descrição / Lançamento</th>
+                                <th>Operação</th>
                                 <th>Conta</th>
                                 <th>Status</th>
-                                <th>Valor (R$)</th>
-                                <th>Saldo Acumulado (R$)</th>
+                                <th>Crédito (+)</th>
+                                <th>Débito (-)</th>
+                                <th>Saldo em Caixa (R$)</th>
                             </tr>
                         </thead>
                         <tbody id="tabela-fluxo-caixa"></tbody>
@@ -319,7 +320,7 @@
     <!-- MODAL DE ROLAGEM / BAIXA -->
     <div id="modal-liquidar" class="modal-overlay" style="display: none;">
         <div class="modal-card">
-            <h3 style="margin-bottom: 8px;">💰 Pagamento / Rolagem de Juros</h3>
+            <h3 style="margin-bottom: 8px;">💰 Pagamento / Quitação do Lançamento</h3>
             <div id="modal-liquidar-info" style="font-size:0.85rem; background:var(--bg); padding:10px; border-radius:8px; margin-bottom:12px;"></div>
             
             <div class="form-group" style="margin-bottom: 12px;">
@@ -337,13 +338,13 @@
             </div>
 
             <div class="form-group" style="margin-top: 12px; margin-bottom: 16px;">
-                <label>Data do Pagamento</label>
+                <label>Data Efetiva da Baixa (Pagamento)</label>
                 <input type="date" id="modal-data-liquidacao">
             </div>
 
             <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">
                 <button class="btn btn-cancel btn-sm" onclick="fecharModalLiquidar()">Cancelar</button>
-                <button class="btn btn-warning btn-sm" onclick="confirmarBaixa(true)">🔄 Pagar e Renovar (+30d)</button>
+                <button class="btn btn-warning btn-sm" onclick="confirmarBaixa(true)">🔄 Pagar Parcial e Renovar</button>
                 <button class="btn btn-success btn-sm" onclick="confirmarBaixa(false)">✅ Quitar Totalmente</button>
             </div>
         </div>
@@ -403,10 +404,9 @@
         /* DETERMINAR STATUS DO ITEM */
         function obterStatusItem(item, isReceita) {
             if (isReceita) {
-                return item.data <= hoy ? 'realizado' : 'pendente';
+                return item.data <= hoy ? 'quitado' : 'pendente';
             } else {
-                let isLiquidado = item.valorBase <= 0;
-                if (isLiquidado) return 'realizado';
+                if (item.status === 'QUITADO' || item.valorBase <= 0) return 'quitado';
                 let isVencida = item.data < hoy;
                 return isVencida ? 'vencido' : 'pendente';
             }
@@ -561,7 +561,7 @@
         function calcularValores(principal, taxa) { let jurosVal = (principal * (taxa || 0)) / 100; return { principal, jurosVal, totalDevido: principal + jurosVal }; }
 
         function renderTagStatus(st) {
-            if (st === 'realizado') return '<span class="tag tag-green">REALIZADO</span>';
+            if (st === 'quitado') return '<span class="tag tag-green">QUITADO</span>';
             if (st === 'vencido') return '<span class="tag tag-red">VENCIDO</span>';
             return '<span class="tag tag-amber">PENDENTE</span>';
         }
@@ -617,7 +617,7 @@
             document.getElementById('rec-desc').value = '';
             document.getElementById('rec-valor').value = '';
             document.getElementById('rec-data').value = hoy;
-            document.getElementById('title-rec-form').innerText = "Nova Receita";
+            document.getElementById('title-rec-form').innerText = "Nova Receita (Crédito)";
             document.getElementById('btn-salvar-rec').innerText = "+ Salvar Receita";
             document.getElementById('btn-cancelar-rec').style.display = "none";
         }
@@ -709,9 +709,11 @@
                             id: timestampBase + i,
                             desc: `${desc} (Fixa ${i + 1}/12)`,
                             conta: conta,
+                            valorOriginal: parseFloat(valorInput.toFixed(2)),
                             valorBase: parseFloat(valorInput.toFixed(2)),
                             data: dataVenc,
                             juros: juros,
+                            status: 'PENDENTE',
                             pagamentos: []
                         });
                     }
@@ -726,9 +728,11 @@
                             id: timestampBase + i,
                             desc: `${desc} (${i + 1}/${parcelas})`,
                             conta: conta,
+                            valorOriginal: parseFloat(valorParcela.toFixed(2)),
                             valorBase: parseFloat(valorParcela.toFixed(2)),
                             data: dataVenc,
                             juros: juros,
+                            status: 'PENDENTE',
                             pagamentos: []
                         });
                     }
@@ -738,9 +742,11 @@
                         id: timestampBase,
                         desc: desc,
                         conta: conta,
+                        valorOriginal: parseFloat(valorInput.toFixed(2)),
                         valorBase: parseFloat(valorInput.toFixed(2)),
                         data: data,
                         juros: juros,
+                        status: 'PENDENTE',
                         pagamentos: []
                     });
                     mostrarToast("Despesa salva!");
@@ -804,7 +810,7 @@
                 let c = calcularValores(item.valorBase, item.juros);
                 let pago = (item.pagamentos || []).reduce((acc, p) => acc + p.valorTotal, 0);
 
-                totalGeral += c.totalDevido;
+                totalGeral += (item.valorOriginal || item.valorBase);
                 totalLiquidadas += pago;
 
                 let st = obterStatusItem(item, false);
@@ -814,12 +820,12 @@
                 tr.innerHTML = `
                     <td><strong>${formatDate(item.data)}</strong></td>
                     <td><strong>${item.desc}</strong></td>
-                    <td>${formatMoney(item.valorBase)}</td>
+                    <td>${formatMoney(item.valorOriginal || item.valorBase)}</td>
                     <td>${item.juros}%</td>
                     <td><strong style="color:var(--danger)">${formatMoney(c.totalDevido)}</strong></td>
                     <td>${renderTagStatus(st)}</td>
                     <td>
-                        ${st !== 'realizado' ? `<button class="btn btn-sm btn-success" onclick="abrirModalLiquidar(${item.id})">💰 Baixar</button>` : ''}
+                        ${st !== 'quitado' ? `<button class="btn btn-sm btn-success" onclick="abrirModalLiquidar(${item.id})">💰 Baixar</button>` : `<span style="font-size:0.75rem; color:var(--success); font-weight:700;">✅ Baixado</span>`}
                         <button class="btn btn-warning btn-sm" onclick="editarDespesa(${item.id})">✏️ Editar</button>
                         <button class="btn btn-danger btn-sm" onclick="removerDespesa(${item.id})">✕</button>
                     </td>
@@ -833,14 +839,14 @@
         }
 
         function removerDespesa(id) {
-            if(confirm("Remover lançamento?")) {
+            if(confirm("Remover lançamento do histórico?")) {
                 despesas = despesas.filter(d => d.id !== id);
                 salvarDadosLocalmente();
                 aplicarFiltros();
             }
         }
 
-        /* MODAL ROLAGEM */
+        /* MODAL ROLAGEM / QUITAÇÃO */
         function abrirModalLiquidar(id) {
             let item = despesas.find(d => d.id === id);
             if (!item) return;
@@ -850,8 +856,8 @@
 
             document.getElementById('modal-liquidar-info').innerHTML = `
                 <strong>${item.desc}</strong><br>
-                Principal: ${formatMoney(c.principal)} | Juros (${item.juros}%): ${formatMoney(c.jurosVal)}<br>
-                <strong style="color:var(--primary)">Total Devido Hoje: ${formatMoney(c.totalDevido)}</strong>
+                Saldo Principal: ${formatMoney(c.principal)} | Juros (${item.juros}%): ${formatMoney(c.jurosVal)}<br>
+                <strong style="color:var(--primary)">Total para Quitar Hoje: ${formatMoney(c.totalDevido)}</strong>
             `;
 
             document.getElementById('modal-valor-pago').value = c.totalDevido.toFixed(2);
@@ -896,13 +902,22 @@
             let novoPrincipal = Math.max(0, principal - amortPrincipal);
 
             if (!item.pagamentos) item.pagamentos = [];
-            item.pagamentos.push({ valorTotal: valPago, valorJuros: abatJuros, valorPrincipal: amortPrincipal, data: dtPago });
+            item.pagamentos.push({
+                id: Date.now(),
+                valorTotal: valPago,
+                valorJuros: abatJuros,
+                valorPrincipal: amortPrincipal,
+                data: dtPago
+            });
 
             if (manterRotativo && novoPrincipal > 0) {
                 item.valorBase = novoPrincipal;
                 item.data = somar30Dias(item.data);
+                item.status = 'PENDENTE';
             } else {
                 item.valorBase = novoPrincipal;
+                item.status = 'QUITADO';
+                item.dataPagamento = dtPago;
             }
 
             fecharModalLiquidar();
@@ -910,7 +925,7 @@
             aplicarFiltros();
         }
 
-        /* INTERFACE & NAVEGAÇÃO DO FLUXO DE CAIXA CONSOLIDADO */
+        /* FLUXO DE CAIXA REAL (DÉBITO E CRÉDITO COM SALDO DISPONÍVEL) */
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -928,79 +943,95 @@
             const bounds = obterIntervaloFiltro();
             const statusFiltro = document.getElementById('filtro-status').value;
 
-            // Unificar Lançamentos
-            let eventos = [];
+            let lancamentos = [];
 
+            // 1. Inserir Receitas (Crédito)
             receitas.forEach(r => {
                 if (estaNoIntervalo(r.data, bounds.start, bounds.end) && passaFiltroStatus(r, true, statusFiltro)) {
-                    eventos.push({
+                    lancamentos.push({
+                        id: r.id,
                         data: r.data,
-                        tipo: 'RECEITA',
                         desc: r.desc,
                         conta: r.conta,
-                        status: obterStatusItem(r, true),
-                        valor: r.valor
+                        tipo: 'CREDITO',
+                        credito: r.valor,
+                        debito: 0,
+                        status: obterStatusItem(r, true)
                     });
                 }
             });
 
+            // 2. Inserir Despesas (Débito)
             despesas.forEach(d => {
                 if (estaNoIntervalo(d.data, bounds.start, bounds.end) && passaFiltroStatus(d, false, statusFiltro)) {
+                    let st = obterStatusItem(d, false);
                     let totalDev = calcularValores(d.valorBase, d.juros).totalDevido;
-                    eventos.push({
-                        data: d.data,
-                        tipo: 'DESPESA',
+                    let valDebito = (d.status === 'QUITADO' && d.pagamentos && d.pagamentos.length > 0) 
+                        ? d.pagamentos.reduce((acc, p) => acc + p.valorTotal, 0) 
+                        : totalDev;
+
+                    lancamentos.push({
+                        id: d.id,
+                        data: (d.status === 'QUITADO' && d.dataPagamento) ? d.dataPagamento : d.data,
                         desc: d.desc,
                         conta: d.conta,
-                        status: obterStatusItem(d, false),
-                        valor: -totalDev
+                        tipo: 'DEBITO',
+                        credito: 0,
+                        debito: valDebito,
+                        status: st
                     });
                 }
             });
 
-            // Ordenar por data cronológica
-            eventos.sort((a, b) => a.data.localeCompare(b.data));
+            // Ordenação Cronológica (Data + Ordem de Inclusão por ID)
+            lancamentos.sort((a, b) => {
+                if (a.data === b.data) return a.id - b.id;
+                return a.data.localeCompare(b.data);
+            });
 
-            let totalEntradas = 0;
-            let totalSaidas = 0;
-            let saldoAcumulado = 0;
+            let totalCreditos = 0;
+            let totalDebitosQuitados = 0;
+            let saldoCaixaEfetivo = 0;
 
             let tbody = document.getElementById('tabela-fluxo-caixa');
             tbody.innerHTML = '';
 
-            eventos.forEach(ev => {
-                if (ev.valor > 0) totalEntradas += ev.valor;
-                else totalSaidas += Math.abs(ev.valor);
-
-                saldoAcumulado += ev.valor;
+            lancamentos.forEach(l => {
+                if (l.tipo === 'CREDITO') {
+                    totalCreditos += l.credito;
+                    saldoCaixaEfetivo += l.credito; // Adiciona ao Saldo do Caixa
+                } else {
+                    // Abate do saldo disponível APENAS se estiver QUITTADO
+                    if (l.status === 'quitado') {
+                        totalDebitosQuitados += l.debito;
+                        saldoCaixaEfetivo -= l.debito; // Abate real do caixa
+                    }
+                }
 
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><strong>${formatDate(ev.data)}</strong></td>
-                    <td><span class="tag ${ev.tipo === 'RECEITA' ? 'tag-green' : 'tag-red'}">${ev.tipo}</span></td>
-                    <td><strong>${ev.desc}</strong></td>
-                    <td><span class="tag tag-blue">${ev.conta}</span></td>
-                    <td>${renderTagStatus(ev.status)}</td>
-                    <td style="color:${ev.valor > 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">
-                        ${ev.valor > 0 ? '+' : ''}${formatMoney(ev.valor)}
-                    </td>
-                    <td style="font-weight:800; color:${saldoAcumulado >= 0 ? 'var(--primary)' : 'var(--danger)'};">
-                        ${formatMoney(saldoAcumulado)}
+                    <td><strong>${formatDate(l.data)}</strong></td>
+                    <td><strong>${l.desc}</strong></td>
+                    <td><span class="tag ${l.tipo === 'CREDITO' ? 'tag-green' : 'tag-red'}">${l.tipo === 'CREDITO' ? 'CRÉDITO (+)' : 'DÉBITO (-)'}</span></td>
+                    <td><span class="tag tag-blue">${l.conta}</span></td>
+                    <td>${renderTagStatus(l.status)}</td>
+                    <td style="color:var(--success); font-weight:700;">${l.credito > 0 ? '+' + formatMoney(l.credito) : '-'}</td>
+                    <td style="color:var(--danger); font-weight:700;">${l.debito > 0 ? '-' + formatMoney(l.debito) : '-'}</td>
+                    <td style="font-weight:800; color:${saldoCaixaEfetivo >= 0 ? 'var(--primary)' : 'var(--danger)'};">
+                        ${formatMoney(saldoCaixaEfetivo)}
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            let resultadoLiquido = totalEntradas - totalSaidas;
-
-            document.getElementById('fc-total-receitas').innerText = formatMoney(totalEntradas);
-            document.getElementById('fc-total-despesas').innerText = formatMoney(totalSaidas);
+            document.getElementById('fc-total-receitas').innerText = formatMoney(totalCreditos);
+            document.getElementById('fc-total-despesas').innerText = formatMoney(totalDebitosQuitados);
             
             let resElem = document.getElementById('fc-resultado-liquido');
-            resElem.innerText = formatMoney(resultadoLiquido);
+            resElem.innerText = formatMoney(saldoCaixaEfetivo);
 
             let cardRes = document.getElementById('card-saldo-resultado');
-            if (resultadoLiquido >= 0) {
+            if (saldoCaixaEfetivo >= 0) {
                 cardRes.style.background = 'linear-gradient(135deg, #10b981, #059669)';
                 cardRes.style.color = 'white';
                 resElem.style.color = 'white';
