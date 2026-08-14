@@ -809,6 +809,9 @@
             listaFiltrada.forEach(item => {
                 let c = calcularValores(item.valorBase, item.juros);
                 let pago = (item.pagamentos || []).reduce((acc, p) => acc + p.valorTotal, 0);
+                if (item.status === 'QUITADO' && pago === 0) {
+                    pago = item.valorOriginal || item.valorBase;
+                }
 
                 totalGeral += (item.valorOriginal || item.valorBase);
                 totalLiquidadas += pago;
@@ -925,7 +928,7 @@
             aplicarFiltros();
         }
 
-        /* FLUXO DE CAIXA REAL (DÉBITO E CRÉDITO COM SALDO DISPONÍVEL) */
+        /* FLUXO DE CAIXA REAL (DÉBITO E CRÉDITO COM SALDO DISPONÍVEL REINVENTADO) */
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -947,6 +950,7 @@
 
             // 1. Inserir Receitas (Crédito)
             receitas.forEach(r => {
+                let st = obterStatusItem(r, true);
                 if (estaNoIntervalo(r.data, bounds.start, bounds.end) && passaFiltroStatus(r, true, statusFiltro)) {
                     lancamentos.push({
                         id: r.id,
@@ -956,36 +960,68 @@
                         tipo: 'CREDITO',
                         credito: r.valor,
                         debito: 0,
-                        status: obterStatusItem(r, true)
+                        status: st
                     });
                 }
             });
 
             // 2. Inserir Despesas (Débito)
             despesas.forEach(d => {
-                if (estaNoIntervalo(d.data, bounds.start, bounds.end) && passaFiltroStatus(d, false, statusFiltro)) {
+                // A) Processar pagamentos já efetuados (Débitos Quitados / Baixados Parciais ou Totais)
+                if (d.pagamentos && d.pagamentos.length > 0) {
+                    d.pagamentos.forEach((p, idx) => {
+                        if (estaNoIntervalo(p.data, bounds.start, bounds.end) && (statusFiltro === 'todos' || statusFiltro === 'quitado')) {
+                            lancamentos.push({
+                                id: d.id + '_p_' + idx,
+                                data: p.data,
+                                desc: `${d.desc} (Pgto ${idx + 1})`,
+                                conta: d.conta,
+                                tipo: 'DEBITO',
+                                credito: 0,
+                                debito: p.valorTotal,
+                                status: 'quitado'
+                            });
+                        }
+                    });
+                } else if (d.status === 'QUITADO') {
+                    // Quitação integral direta
+                    let dtPag = d.dataPagamento || d.data;
+                    if (estaNoIntervalo(dtPag, bounds.start, bounds.end) && (statusFiltro === 'todos' || statusFiltro === 'quitado')) {
+                        lancamentos.push({
+                            id: d.id + '_q',
+                            data: dtPag,
+                            desc: d.desc,
+                            conta: d.conta,
+                            tipo: 'DEBITO',
+                            credito: 0,
+                            debito: d.valorOriginal || d.valorBase,
+                            status: 'quitado'
+                        });
+                    }
+                }
+
+                // B) Processar pendências vigentes (Salmos / Vencidos ainda não liquidados)
+                if (d.status !== 'QUITADO' && d.valorBase > 0) {
                     let st = obterStatusItem(d, false);
                     let totalDev = calcularValores(d.valorBase, d.juros).totalDevido;
-                    let valDebito = (d.status === 'QUITADO' && d.pagamentos && d.pagamentos.length > 0) 
-                        ? d.pagamentos.reduce((acc, p) => acc + p.valorTotal, 0) 
-                        : totalDev;
-
-                    lancamentos.push({
-                        id: d.id,
-                        data: (d.status === 'QUITADO' && d.dataPagamento) ? d.dataPagamento : d.data,
-                        desc: d.desc,
-                        conta: d.conta,
-                        tipo: 'DEBITO',
-                        credito: 0,
-                        debito: valDebito,
-                        status: st
-                    });
+                    if (estaNoIntervalo(d.data, bounds.start, bounds.end) && passaFiltroStatus(d, false, statusFiltro)) {
+                        lancamentos.push({
+                            id: d.id + '_pend',
+                            data: d.data,
+                            desc: d.desc,
+                            conta: d.conta,
+                            tipo: 'DEBITO',
+                            credito: 0,
+                            debito: totalDev,
+                            status: st
+                        });
+                    }
                 }
             });
 
-            // Ordenação Cronológica (Data + Ordem de Inclusão por ID)
+            // Ordenação Cronológica (Data + Identificador)
             lancamentos.sort((a, b) => {
-                if (a.data === b.data) return a.id - b.id;
+                if (a.data === b.data) return String(a.id).localeCompare(String(b.id));
                 return a.data.localeCompare(b.data);
             });
 
@@ -997,14 +1033,24 @@
             tbody.innerHTML = '';
 
             lancamentos.forEach(l => {
+                let saldoExibicao = saldoCaixaEfetivo;
+                let notaSaldo = '';
+
                 if (l.tipo === 'CREDITO') {
-                    totalCreditos += l.credito;
-                    saldoCaixaEfetivo += l.credito; // Adiciona ao Saldo do Caixa
-                } else {
-                    // Abate do saldo disponível APENAS se estiver QUITTADO
+                    if (l.status === 'quitado') {
+                        totalCreditos += l.credito;
+                        saldoCaixaEfetivo += l.credito;
+                        saldoExibicao = saldoCaixaEfetivo;
+                    } else {
+                        notaSaldo = ' <small style="color:var(--text-muted); font-weight:normal;">(Previsto)</small>';
+                    }
+                } else { // DEBITO
                     if (l.status === 'quitado') {
                         totalDebitosQuitados += l.debito;
-                        saldoCaixaEfetivo -= l.debito; // Abate real do caixa
+                        saldoCaixaEfetivo -= l.debito; // Abate do saldo do caixa
+                        saldoExibicao = saldoCaixaEfetivo;
+                    } else {
+                        notaSaldo = ' <small style="color:var(--text-muted); font-weight:normal;">(Previsto)</small>';
                     }
                 }
 
@@ -1017,8 +1063,8 @@
                     <td>${renderTagStatus(l.status)}</td>
                     <td style="color:var(--success); font-weight:700;">${l.credito > 0 ? '+' + formatMoney(l.credito) : '-'}</td>
                     <td style="color:var(--danger); font-weight:700;">${l.debito > 0 ? '-' + formatMoney(l.debito) : '-'}</td>
-                    <td style="font-weight:800; color:${saldoCaixaEfetivo >= 0 ? 'var(--primary)' : 'var(--danger)'};">
-                        ${formatMoney(saldoCaixaEfetivo)}
+                    <td style="font-weight:800; color:${saldoExibicao >= 0 ? 'var(--primary)' : 'var(--danger)'};">
+                        ${formatMoney(saldoExibicao)}${notaSaldo}
                     </td>
                 `;
                 tbody.appendChild(tr);
