@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Financeira Personalizada</title>
+    <title>Gestão Financeira & Fluxo de Caixa Dinâmico</title>
 
     <style>
         :root {
@@ -45,7 +45,6 @@
 
         .cloud-info h3 { font-size: 1rem; font-weight: 700; color: #f8fafc; }
         .cloud-info p { font-size: 0.8rem; color: #94a3b8; }
-
         .cloud-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
         /* ESTILOS GERAIS */
@@ -75,7 +74,7 @@
         .btn-sm { padding: 6px 10px; font-size: 0.78rem; }
         .btn-light { background: #334155; color: white; }
 
-        /* PAINEL DE FILTRO DE PERÍODO */
+        /* PAINEL DE FILTROS DINÂMICOS */
         .filter-card {
             background: #f1f5f9;
             border: 1px solid #cbd5e1;
@@ -131,19 +130,19 @@
         </div>
 
         <header>
-            <h1>Gestão Financeira & Rolagem</h1>
+            <h1>Gestão Financeira & Fluxo de Caixa</h1>
         </header>
 
         <div class="nav-tabs">
             <button class="tab-btn active" onclick="switchTab('tab-receitas')">💰 Receitas</button>
             <button class="tab-btn" onclick="switchTab('tab-despesas')">💳 Despesas e Empréstimos</button>
-            <button class="tab-btn" onclick="switchTab('tab-fluxo')">📊 Fluxo de Caixa</button>
+            <button class="tab-btn" onclick="switchTab('tab-fluxo')">📊 Fluxo de Caixa Consolidado</button>
         </div>
 
-        <!-- SELETOR DINÂMICO DE PERÍODO -->
+        <!-- SELETOR DINÂMICO DE PERÍODO E STATUS -->
         <div class="filter-card">
             <div class="filter-header">
-                <strong>🔍 Filtro de Análise Dinâmica</strong>
+                <strong>🔍 Filtros Globais de Análise</strong>
                 <span class="period-badge" id="lbl-periodo-ativo">Exibindo: Todos os Registros</span>
             </div>
             <div class="form-grid" style="margin-bottom: 0;">
@@ -158,6 +157,17 @@
                     </select>
                 </div>
 
+                <!-- FILTRO DE STATUS DINÂMICO -->
+                <div class="form-group">
+                    <label>Status do Lançamento</label>
+                    <select id="filtro-status" onchange="aplicarFiltros()">
+                        <option value="todos" selected>Todos os Status</option>
+                        <option value="realizado">✅ Realizados / Quitados</option>
+                        <option value="pendente">⏳ Pendentes / Previstos</option>
+                        <option value="vencido">🚨 Vencidos em Atraso</option>
+                    </select>
+                </div>
+
                 <!-- GRUPO MÊS E ANO -->
                 <div class="form-group" id="grp-filtro-mes">
                     <label>Mês / Ano</label>
@@ -168,7 +178,7 @@
                 </div>
 
                 <!-- GRUPO QUINZENA -->
-                <div class="form-group" id="grp-filtro-quinzena">
+                <div class="form-group" id="grp-filtro-quinzena" style="display:none;">
                     <label>Selecione a Quinzena</label>
                     <select id="filtro-quinzena-num" onchange="aplicarFiltros()">
                         <option value="1">1ª Quinzena (Dias 01 a 15)</option>
@@ -218,7 +228,7 @@
             <div class="card">
                 <div class="table-responsive">
                     <table>
-                        <thead><tr><th>Data</th><th>Descrição</th><th>Conta</th><th>Valor</th><th>Ações</th></tr></thead>
+                        <thead><tr><th>Data</th><th>Descrição</th><th>Conta</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
                         <tbody id="tabela-receitas"></tbody>
                     </table>
                 </div>
@@ -228,7 +238,7 @@
         <!-- ABA 2: DESPESAS E EMPRÉSTIMOS -->
         <div id="tab-despesas" class="tab-content">
             <div class="summary-grid">
-                <div class="summary-card"><div class="label">Total Devido (No Período)</div><div class="value" id="desp-summary-total">R$ 0,00</div></div>
+                <div class="summary-card"><div class="label">Total Devido (Filtrado)</div><div class="value" id="desp-summary-total">R$ 0,00</div></div>
                 <div class="summary-card" style="border-left: 4px solid var(--danger);"><div class="label" style="color:var(--danger)">Vencidos</div><div class="value" id="desp-summary-vencidas" style="color:var(--danger)">R$ 0,00</div></div>
                 <div class="summary-card" style="border-left: 4px solid var(--success);"><div class="label" style="color:var(--success)">Total Pago/Baixado</div><div class="value" id="desp-summary-liquidadas" style="color:var(--success)">R$ 0,00</div></div>
             </div>
@@ -273,12 +283,34 @@
             </div>
         </div>
 
-        <!-- ABA 3: FLUXO DE CAIXA -->
+        <!-- ABA 3: FLUXO DE CAIXA CONSOLIDADO -->
         <div id="tab-fluxo" class="tab-content">
             <div class="summary-grid">
-                <div class="summary-card"><div class="label">Receitas (Conta A - No Período)</div><div class="value" id="fc-total-receitas" style="color:var(--success)">R$ 0,00</div></div>
-                <div class="summary-card"><div class="label">Compromissos Restantes</div><div class="value" id="fc-compromissos-a" style="color:var(--danger)">R$ 0,00</div></div>
-                <div class="summary-card" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color:white;"><div class="label" style="color:#bfdbfe">Saldo Projetado Livre</div><div class="value" id="fc-disponivel-b">R$ 0,00</div></div>
+                <div class="summary-card"><div class="label">Entradas (No Filtro)</div><div class="value" id="fc-total-receitas" style="color:var(--success)">R$ 0,00</div></div>
+                <div class="summary-card"><div class="label">Saídas (No Filtro)</div><div class="value" id="fc-total-despesas" style="color:var(--danger)">R$ 0,00</div></div>
+                <div class="summary-card" id="card-saldo-resultado"><div class="label">Resultado Líquido</div><div class="value" id="fc-resultado-liquido">R$ 0,00</div></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📈 Extrato Detalhado do Fluxo de Caixa (Linha do Tempo)</div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Descrição</th>
+                                <th>Conta</th>
+                                <th>Status</th>
+                                <th>Valor (R$)</th>
+                                <th>Saldo Acumulado (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-fluxo-caixa"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -368,6 +400,24 @@
             }
         }
 
+        /* DETERMINAR STATUS DO ITEM */
+        function obterStatusItem(item, isReceita) {
+            if (isReceita) {
+                return item.data <= hoy ? 'realizado' : 'pendente';
+            } else {
+                let isLiquidado = item.valorBase <= 0;
+                if (isLiquidado) return 'realizado';
+                let isVencida = item.data < hoy;
+                return isVencida ? 'vencido' : 'pendente';
+            }
+        }
+
+        function passaFiltroStatus(item, isReceita, statusFiltro) {
+            if (statusFiltro === 'todos') return true;
+            let st = obterStatusItem(item, isReceita);
+            return st === statusFiltro;
+        }
+
         /* LÓGICA DE FILTRAGEM TEMPORAL */
         function obterIntervaloFiltro() {
             const tipo = document.getElementById('filtro-tipo').value;
@@ -400,7 +450,7 @@
                 let [y, m, d] = refVal.split('-').map(Number);
                 let dt = new Date(y, m - 1, d);
                 let dayOfWeek = dt.getDay(); 
-                let diffToMon = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek); // Segunda-feira
+                let diffToMon = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
                 
                 let seg = new Date(dt);
                 seg.setDate(dt.getDate() + diffToMon);
@@ -510,6 +560,12 @@
 
         function calcularValores(principal, taxa) { let jurosVal = (principal * (taxa || 0)) / 100; return { principal, jurosVal, totalDevido: principal + jurosVal }; }
 
+        function renderTagStatus(st) {
+            if (st === 'realizado') return '<span class="tag tag-green">REALIZADO</span>';
+            if (st === 'vencido') return '<span class="tag tag-red">VENCIDO</span>';
+            return '<span class="tag tag-amber">PENDENTE</span>';
+        }
+
         /* RECEITAS */
         function salvarReceita() {
             let desc = document.getElementById('rec-desc').value.trim();
@@ -571,16 +627,22 @@
             tbody.innerHTML = '';
 
             const bounds = obterIntervaloFiltro();
-            let listaFiltrada = receitas.filter(r => estaNoIntervalo(r.data, bounds.start, bounds.end));
+            const statusFiltro = document.getElementById('filtro-status').value;
+
+            let listaFiltrada = receitas.filter(r => 
+                estaNoIntervalo(r.data, bounds.start, bounds.end) && passaFiltroStatus(r, true, statusFiltro)
+            );
             listaFiltrada.sort((a, b) => a.data.localeCompare(b.data));
 
             listaFiltrada.forEach(item => {
+                let st = obterStatusItem(item, true);
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${formatDate(item.data)}</td>
                     <td><strong>${item.desc}</strong></td>
                     <td><span class="tag tag-blue">${item.conta}</span></td>
                     <td><strong style="color:var(--success)">${formatMoney(item.valor)}</strong></td>
+                    <td>${renderTagStatus(st)}</td>
                     <td>
                         <button class="btn btn-warning btn-sm" onclick="editarReceita(${item.id})">✏️ Editar</button>
                         <button class="btn btn-danger btn-sm" onclick="removerReceita(${item.id})">✕</button>
@@ -731,7 +793,11 @@
             let totalGeral = 0, totalVencidas = 0, totalLiquidadas = 0;
 
             const bounds = obterIntervaloFiltro();
-            let listaFiltrada = despesas.filter(d => estaNoIntervalo(d.data, bounds.start, bounds.end));
+            const statusFiltro = document.getElementById('filtro-status').value;
+
+            let listaFiltrada = despesas.filter(d => 
+                estaNoIntervalo(d.data, bounds.start, bounds.end) && passaFiltroStatus(d, false, statusFiltro)
+            );
             listaFiltrada.sort((a, b) => a.data.localeCompare(b.data));
 
             listaFiltrada.forEach(item => {
@@ -741,10 +807,8 @@
                 totalGeral += c.totalDevido;
                 totalLiquidadas += pago;
 
-                let isLiquidado = item.valorBase <= 0;
-                let isVencida = !isLiquidado && item.data < hoy;
-
-                if (isVencida) totalVencidas += c.totalDevido;
+                let st = obterStatusItem(item, false);
+                if (st === 'vencido') totalVencidas += c.totalDevido;
 
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -753,9 +817,9 @@
                     <td>${formatMoney(item.valorBase)}</td>
                     <td>${item.juros}%</td>
                     <td><strong style="color:var(--danger)">${formatMoney(c.totalDevido)}</strong></td>
-                    <td>${isLiquidado ? '<span class="tag tag-green">QUITADO</span>' : (isVencida ? '<span class="tag tag-red">VENCIDO</span>' : '<span class="tag tag-amber">PENDENTE</span>')}</td>
+                    <td>${renderTagStatus(st)}</td>
                     <td>
-                        ${!isLiquidado ? `<button class="btn btn-sm btn-success" onclick="abrirModalLiquidar(${item.id})">💰 Baixar</button>` : ''}
+                        ${st !== 'realizado' ? `<button class="btn btn-sm btn-success" onclick="abrirModalLiquidar(${item.id})">💰 Baixar</button>` : ''}
                         <button class="btn btn-warning btn-sm" onclick="editarDespesa(${item.id})">✏️ Editar</button>
                         <button class="btn btn-danger btn-sm" onclick="removerDespesa(${item.id})">✕</button>
                     </td>
@@ -846,7 +910,7 @@
             aplicarFiltros();
         }
 
-        /* INTERFACE & NAVEGAÇÃO */
+        /* INTERFACE & NAVEGAÇÃO DO FLUXO DE CAIXA CONSOLIDADO */
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -862,18 +926,89 @@
 
         function atualizarFluxo() {
             const bounds = obterIntervaloFiltro();
+            const statusFiltro = document.getElementById('filtro-status').value;
 
-            let recA = receitas
-                .filter(r => r.conta === 'Conta A' && estaNoIntervalo(r.data, bounds.start, bounds.end))
-                .reduce((acc, r) => acc + r.valor, 0);
+            // Unificar Lançamentos
+            let eventos = [];
 
-            let despA = despesas
-                .filter(d => d.conta === 'Conta A' && d.valorBase > 0 && estaNoIntervalo(d.data, bounds.start, bounds.end))
-                .reduce((acc, d) => acc + calcularValores(d.valorBase, d.juros).totalDevido, 0);
+            receitas.forEach(r => {
+                if (estaNoIntervalo(r.data, bounds.start, bounds.end) && passaFiltroStatus(r, true, statusFiltro)) {
+                    eventos.push({
+                        data: r.data,
+                        tipo: 'RECEITA',
+                        desc: r.desc,
+                        conta: r.conta,
+                        status: obterStatusItem(r, true),
+                        valor: r.valor
+                    });
+                }
+            });
 
-            document.getElementById('fc-total-receitas').innerText = formatMoney(recA);
-            document.getElementById('fc-compromissos-a').innerText = formatMoney(despA);
-            document.getElementById('fc-disponivel-b').innerText = formatMoney(Math.max(0, recA - despA));
+            despesas.forEach(d => {
+                if (estaNoIntervalo(d.data, bounds.start, bounds.end) && passaFiltroStatus(d, false, statusFiltro)) {
+                    let totalDev = calcularValores(d.valorBase, d.juros).totalDevido;
+                    eventos.push({
+                        data: d.data,
+                        tipo: 'DESPESA',
+                        desc: d.desc,
+                        conta: d.conta,
+                        status: obterStatusItem(d, false),
+                        valor: -totalDev
+                    });
+                }
+            });
+
+            // Ordenar por data cronológica
+            eventos.sort((a, b) => a.data.localeCompare(b.data));
+
+            let totalEntradas = 0;
+            let totalSaidas = 0;
+            let saldoAcumulado = 0;
+
+            let tbody = document.getElementById('tabela-fluxo-caixa');
+            tbody.innerHTML = '';
+
+            eventos.forEach(ev => {
+                if (ev.valor > 0) totalEntradas += ev.valor;
+                else totalSaidas += Math.abs(ev.valor);
+
+                saldoAcumulado += ev.valor;
+
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${formatDate(ev.data)}</strong></td>
+                    <td><span class="tag ${ev.tipo === 'RECEITA' ? 'tag-green' : 'tag-red'}">${ev.tipo}</span></td>
+                    <td><strong>${ev.desc}</strong></td>
+                    <td><span class="tag tag-blue">${ev.conta}</span></td>
+                    <td>${renderTagStatus(ev.status)}</td>
+                    <td style="color:${ev.valor > 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:700;">
+                        ${ev.valor > 0 ? '+' : ''}${formatMoney(ev.valor)}
+                    </td>
+                    <td style="font-weight:800; color:${saldoAcumulado >= 0 ? 'var(--primary)' : 'var(--danger)'};">
+                        ${formatMoney(saldoAcumulado)}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            let resultadoLiquido = totalEntradas - totalSaidas;
+
+            document.getElementById('fc-total-receitas').innerText = formatMoney(totalEntradas);
+            document.getElementById('fc-total-despesas').innerText = formatMoney(totalSaidas);
+            
+            let resElem = document.getElementById('fc-resultado-liquido');
+            resElem.innerText = formatMoney(resultadoLiquido);
+
+            let cardRes = document.getElementById('card-saldo-resultado');
+            if (resultadoLiquido >= 0) {
+                cardRes.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                cardRes.style.color = 'white';
+                resElem.style.color = 'white';
+            } else {
+                cardRes.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                cardRes.style.color = 'white';
+                resElem.style.color = 'white';
+            }
         }
 
         function mostrarToast(msg) {
