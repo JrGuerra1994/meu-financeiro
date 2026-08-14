@@ -52,7 +52,7 @@
         header { text-align: center; margin-bottom: 20px; }
         header h1 { font-size: 1.6rem; font-weight: 800; }
         
-        .nav-tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 8px; flex-wrap: wrap; }
+        .nav-tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 8px; flex-wrap: wrap; }
         .tab-btn { background: transparent; border: none; padding: 8px 14px; font-size: 0.9rem; font-weight: 700; color: var(--text-muted); cursor: pointer; border-radius: 8px; }
         .tab-btn.active { background: var(--primary); color: white; }
         .tab-content { display: none; }
@@ -74,6 +74,18 @@
         .btn-cancel { background: var(--text-muted); color: white; }
         .btn-sm { padding: 6px 10px; font-size: 0.78rem; }
         .btn-light { background: #334155; color: white; }
+
+        /* PAINEL DE FILTRO DE PERÍODO */
+        .filter-card {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: var(--radius);
+            padding: 14px;
+            margin-bottom: 20px;
+        }
+        .filter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+        .filter-header strong { font-size: 0.95rem; color: #1e293b; display: flex; align-items: center; gap: 6px; }
+        .period-badge { background: var(--primary-light); color: var(--primary); font-weight: 700; font-size: 0.78rem; padding: 4px 10px; border-radius: 20px; border: 1px solid #bfdbfe; }
 
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .summary-card { background: var(--card-bg); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); }
@@ -128,6 +140,60 @@
             <button class="tab-btn" onclick="switchTab('tab-fluxo')">📊 Fluxo de Caixa</button>
         </div>
 
+        <!-- SELETOR DINÂMICO DE PERÍODO -->
+        <div class="filter-card">
+            <div class="filter-header">
+                <strong>🔍 Filtro de Análise Dinâmica</strong>
+                <span class="period-badge" id="lbl-periodo-ativo">Exibindo: Todos os Registros</span>
+            </div>
+            <div class="form-grid" style="margin-bottom: 0;">
+                <div class="form-group">
+                    <label>Visão Temporal</label>
+                    <select id="filtro-tipo" onchange="atualizarInterfaceFiltro()">
+                        <option value="todos">Todos os Registros</option>
+                        <option value="mes" selected>Mês Específico</option>
+                        <option value="quinzena">Quinzena</option>
+                        <option value="semana">Semana</option>
+                        <option value="custom">Personalizado (Período)</option>
+                    </select>
+                </div>
+
+                <!-- GRUPO MÊS E ANO -->
+                <div class="form-group" id="grp-filtro-mes">
+                    <label>Mês / Ano</label>
+                    <div style="display:flex; gap:6px;">
+                        <select id="filtro-mes-num" onchange="aplicarFiltros()"></select>
+                        <select id="filtro-ano-num" onchange="aplicarFiltros()"></select>
+                    </div>
+                </div>
+
+                <!-- GRUPO QUINZENA -->
+                <div class="form-group" id="grp-filtro-quinzena">
+                    <label>Selecione a Quinzena</label>
+                    <select id="filtro-quinzena-num" onchange="aplicarFiltros()">
+                        <option value="1">1ª Quinzena (Dias 01 a 15)</option>
+                        <option value="2">2ª Quinzena (Dia 16 ao Fim)</option>
+                    </select>
+                </div>
+
+                <!-- GRUPO SEMANA -->
+                <div class="form-group" id="grp-filtro-semana" style="display:none;">
+                    <label>Data de Referência da Semana</label>
+                    <input type="date" id="filtro-semana-ref" onchange="aplicarFiltros()">
+                </div>
+
+                <!-- GRUPO PERSONALIZADO -->
+                <div class="form-group" id="grp-filtro-custom-ini" style="display:none;">
+                    <label>Data Inicial</label>
+                    <input type="date" id="filtro-ini" onchange="aplicarFiltros()">
+                </div>
+                <div class="form-group" id="grp-filtro-custom-fim" style="display:none;">
+                    <label>Data Final</label>
+                    <input type="date" id="filtro-fim" onchange="aplicarFiltros()">
+                </div>
+            </div>
+        </div>
+
         <!-- ABA 1: RECEITAS -->
         <div id="tab-receitas" class="tab-content active">
             <div class="card">
@@ -162,7 +228,7 @@
         <!-- ABA 2: DESPESAS E EMPRÉSTIMOS -->
         <div id="tab-despesas" class="tab-content">
             <div class="summary-grid">
-                <div class="summary-card"><div class="label">Total Devido</div><div class="value" id="desp-summary-total">R$ 0,00</div></div>
+                <div class="summary-card"><div class="label">Total Devido (No Período)</div><div class="value" id="desp-summary-total">R$ 0,00</div></div>
                 <div class="summary-card" style="border-left: 4px solid var(--danger);"><div class="label" style="color:var(--danger)">Vencidos</div><div class="value" id="desp-summary-vencidas" style="color:var(--danger)">R$ 0,00</div></div>
                 <div class="summary-card" style="border-left: 4px solid var(--success);"><div class="label" style="color:var(--success)">Total Pago/Baixado</div><div class="value" id="desp-summary-liquidadas" style="color:var(--success)">R$ 0,00</div></div>
             </div>
@@ -210,9 +276,9 @@
         <!-- ABA 3: FLUXO DE CAIXA -->
         <div id="tab-fluxo" class="tab-content">
             <div class="summary-grid">
-                <div class="summary-card"><div class="label">Receitas (Conta A)</div><div class="value" id="fc-total-receitas" style="color:var(--success)">R$ 0,00</div></div>
+                <div class="summary-card"><div class="label">Receitas (Conta A - No Período)</div><div class="value" id="fc-total-receitas" style="color:var(--success)">R$ 0,00</div></div>
                 <div class="summary-card"><div class="label">Compromissos Restantes</div><div class="value" id="fc-compromissos-a" style="color:var(--danger)">R$ 0,00</div></div>
-                <div class="summary-card" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color:white;"><div class="label" style="color:#bfdbfe">Saldo Livre (Conta B)</div><div class="value" id="fc-disponivel-b">R$ 0,00</div></div>
+                <div class="summary-card" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color:white;"><div class="label" style="color:#bfdbfe">Saldo Projetado Livre</div><div class="value" id="fc-disponivel-b">R$ 0,00</div></div>
             </div>
         </div>
 
@@ -266,10 +332,119 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('rec-data').value = hoy;
             document.getElementById('desp-data').value = hoy;
+            document.getElementById('filtro-semana-ref').value = hoy;
+            
+            inicializarOpcoesFiltroData();
             carregarDadosLocalmente();
+            atualizarInterfaceFiltro();
+        });
+
+        /* INICIALIZAR MESES E ANOS NO FILTRO */
+        function inicializarOpcoesFiltroData() {
+            const selectMes = document.getElementById('filtro-mes-num');
+            const selectAno = document.getElementById('filtro-ano-num');
+            
+            const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const dtHoje = new Date();
+            const mesAtual = dtHoje.getMonth();
+            const anoAtual = dtHoje.getFullYear();
+
+            selectMes.innerHTML = '';
+            nomesMeses.forEach((m, idx) => {
+                let opt = document.createElement('option');
+                opt.value = idx;
+                opt.innerText = m;
+                if (idx === mesAtual) opt.selected = true;
+                selectMes.appendChild(opt);
+            });
+
+            selectAno.innerHTML = '';
+            for (let a = anoAtual - 2; a <= anoAtual + 3; a++) {
+                let opt = document.createElement('option');
+                opt.value = a;
+                opt.innerText = a;
+                if (a === anoAtual) opt.selected = true;
+                selectAno.appendChild(opt);
+            }
+        }
+
+        /* LÓGICA DE FILTRAGEM TEMPORAL */
+        function obterIntervaloFiltro() {
+            const tipo = document.getElementById('filtro-tipo').value;
+            if (tipo === 'todos') return { start: null, end: null, label: 'Exibindo: Todos os Registros' };
+
+            const mes = parseInt(document.getElementById('filtro-mes-num').value);
+            const ano = parseInt(document.getElementById('filtro-ano-num').value);
+
+            if (tipo === 'mes') {
+                const start = new Date(ano, mes, 1).toISOString().split('T')[0];
+                const end = new Date(ano, mes + 1, 0).toISOString().split('T')[0];
+                return { start, end, label: `Mês: ${formatDate(start)} até ${formatDate(end)}` };
+            }
+
+            if (tipo === 'quinzena') {
+                const q = document.getElementById('filtro-quinzena-num').value;
+                let start, end;
+                if (q === '1') {
+                    start = new Date(ano, mes, 1).toISOString().split('T')[0];
+                    end = new Date(ano, mes, 15).toISOString().split('T')[0];
+                } else {
+                    start = new Date(ano, mes, 16).toISOString().split('T')[0];
+                    end = new Date(ano, mes + 1, 0).toISOString().split('T')[0];
+                }
+                return { start, end, label: `Quinzena: ${formatDate(start)} até ${formatDate(end)}` };
+            }
+
+            if (tipo === 'semana') {
+                const refVal = document.getElementById('filtro-semana-ref').value || hoy;
+                let [y, m, d] = refVal.split('-').map(Number);
+                let dt = new Date(y, m - 1, d);
+                let dayOfWeek = dt.getDay(); 
+                let diffToMon = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek); // Segunda-feira
+                
+                let seg = new Date(dt);
+                seg.setDate(dt.getDate() + diffToMon);
+                let dom = new Date(seg);
+                dom.setDate(seg.getDate() + 6);
+
+                const start = seg.toISOString().split('T')[0];
+                const end = dom.toISOString().split('T')[0];
+                return { start, end, label: `Semana: ${formatDate(start)} até ${formatDate(end)}` };
+            }
+
+            if (tipo === 'custom') {
+                const start = document.getElementById('filtro-ini').value;
+                const end = document.getElementById('filtro-fim').value;
+                if (!start || !end) return { start: null, end: null, label: 'Período Incompleto' };
+                return { start, end, label: `Período: ${formatDate(start)} até ${formatDate(end)}` };
+            }
+        }
+
+        function estaNoIntervalo(dataISO, start, end) {
+            if (!start || !end) return true;
+            return dataISO >= start && dataISO <= end;
+        }
+
+        function atualizarInterfaceFiltro() {
+            const tipo = document.getElementById('filtro-tipo').value;
+
+            document.getElementById('grp-filtro-mes').style.display = (tipo === 'mes' || tipo === 'quinzena') ? 'flex' : 'none';
+            document.getElementById('grp-filtro-quinzena').style.display = (tipo === 'quinzena') ? 'flex' : 'none';
+            document.getElementById('grp-filtro-semana').style.display = (tipo === 'semana') ? 'flex' : 'none';
+            document.getElementById('grp-filtro-custom-ini').style.display = (tipo === 'custom') ? 'flex' : 'none';
+            document.getElementById('grp-filtro-custom-fim').style.display = (tipo === 'custom') ? 'flex' : 'none';
+
+            aplicarFiltros();
+        }
+
+        function aplicarFiltros() {
+            const bounds = obterIntervaloFiltro();
+            document.getElementById('lbl-periodo-ativo').innerText = bounds.label;
+
             renderReceitas();
             renderDespesas();
-        });
+            atualizarFluxo();
+        }
 
         /* PERSISTÊNCIA LOCAL (LOCALSTORAGE) */
         function salvarDadosLocalmente() {
@@ -310,8 +485,7 @@
                         receitas = dados.receitas;
                         despesas = dados.despesas;
                         salvarDadosLocalmente();
-                        renderReceitas();
-                        renderDespesas();
+                        aplicarFiltros();
                         mostrarToast("✅ Backup restaurado com sucesso!");
                     }
                 } catch (err) {
@@ -364,7 +538,7 @@
             document.getElementById('rec-valor').value = '';
 
             salvarDadosLocalmente();
-            renderReceitas();
+            aplicarFiltros();
         }
 
         function editarReceita(id) {
@@ -395,7 +569,12 @@
         function renderReceitas() {
             let tbody = document.getElementById('tabela-receitas');
             tbody.innerHTML = '';
-            receitas.forEach(item => {
+
+            const bounds = obterIntervaloFiltro();
+            let listaFiltrada = receitas.filter(r => estaNoIntervalo(r.data, bounds.start, bounds.end));
+            listaFiltrada.sort((a, b) => a.data.localeCompare(b.data));
+
+            listaFiltrada.forEach(item => {
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${formatDate(item.data)}</td>
@@ -415,7 +594,7 @@
             if(confirm("Remover receita?")) {
                 receitas = receitas.filter(r => r.id !== id);
                 salvarDadosLocalmente();
-                renderReceitas();
+                aplicarFiltros();
             }
         }
 
@@ -447,7 +626,6 @@
 
             if (!desc || isNaN(valorInput) || valorInput <= 0) return alert('Preencha a descrição e o valor corretamente!');
 
-            // EDIÇÃO DE UM ITEM EXISTENTE
             if (editDespesaId !== null) {
                 let item = despesas.find(d => d.id === editDespesaId);
                 if (item) {
@@ -460,11 +638,9 @@
                 }
                 cancelarEdicaoDespesa();
             } else {
-                // NOVO LANÇAMENTO
                 let timestampBase = Date.now();
 
                 if (tipo === 'fixa') {
-                    // REPETIR MESMO VALOR POR 12 MESES
                     for (let i = 0; i < 12; i++) {
                         let dataVenc = somarMeses(data, i);
                         despesas.push({
@@ -479,7 +655,6 @@
                     }
                     mostrarToast("Lançadas 12 parcelas fixas!");
                 } else if (tipo === 'parcelada') {
-                    // DIVIDIR O VALOR TOTAL EM N PARCELAS
                     let parcelas = parseInt(document.getElementById('desp-parcelas').value) || 2;
                     let valorParcela = valorInput / parcelas;
 
@@ -497,7 +672,6 @@
                     }
                     mostrarToast(`Lançadas ${parcelas} parcelas!`);
                 } else {
-                    // LANÇAMENTO ÚNICO
                     despesas.push({
                         id: timestampBase,
                         desc: desc,
@@ -517,7 +691,7 @@
             toggleTipoDespesa();
 
             salvarDadosLocalmente();
-            renderDespesas();
+            aplicarFiltros();
         }
 
         function editarDespesa(id) {
@@ -556,9 +730,11 @@
             tbody.innerHTML = '';
             let totalGeral = 0, totalVencidas = 0, totalLiquidadas = 0;
 
-            despesas.sort((a, b) => a.data.localeCompare(b.data));
+            const bounds = obterIntervaloFiltro();
+            let listaFiltrada = despesas.filter(d => estaNoIntervalo(d.data, bounds.start, bounds.end));
+            listaFiltrada.sort((a, b) => a.data.localeCompare(b.data));
 
-            despesas.forEach(item => {
+            listaFiltrada.forEach(item => {
                 let c = calcularValores(item.valorBase, item.juros);
                 let pago = (item.pagamentos || []).reduce((acc, p) => acc + p.valorTotal, 0);
 
@@ -596,7 +772,7 @@
             if(confirm("Remover lançamento?")) {
                 despesas = despesas.filter(d => d.id !== id);
                 salvarDadosLocalmente();
-                renderDespesas();
+                aplicarFiltros();
             }
         }
 
@@ -667,7 +843,7 @@
 
             fecharModalLiquidar();
             salvarDadosLocalmente();
-            renderDespesas();
+            aplicarFiltros();
         }
 
         /* INTERFACE & NAVEGAÇÃO */
@@ -685,8 +861,15 @@
         }
 
         function atualizarFluxo() {
-            let recA = receitas.filter(r => r.conta === 'Conta A').reduce((acc, r) => acc + r.valor, 0);
-            let despA = despesas.filter(d => d.conta === 'Conta A').reduce((acc, d) => acc + calcularValores(d.valorBase, d.juros).totalDevido, 0);
+            const bounds = obterIntervaloFiltro();
+
+            let recA = receitas
+                .filter(r => r.conta === 'Conta A' && estaNoIntervalo(r.data, bounds.start, bounds.end))
+                .reduce((acc, r) => acc + r.valor, 0);
+
+            let despA = despesas
+                .filter(d => d.conta === 'Conta A' && d.valorBase > 0 && estaNoIntervalo(d.data, bounds.start, bounds.end))
+                .reduce((acc, d) => acc + calcularValores(d.valorBase, d.juros).totalDevido, 0);
 
             document.getElementById('fc-total-receitas').innerText = formatMoney(recA);
             document.getElementById('fc-compromissos-a').innerText = formatMoney(despA);
