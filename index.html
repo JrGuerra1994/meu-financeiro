@@ -62,7 +62,7 @@
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
         .card-title { font-size: 1.05rem; font-weight: 700; }
 
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
         .form-group { display: flex; flex-direction: column; gap: 4px; }
         .form-group label { font-size: 0.8rem; font-weight: 600; }
         input[type="text"], input[type="number"], input[type="date"], select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; outline: none; }
@@ -156,7 +156,7 @@
             </div>
         </div>
 
-        <!-- ABA 2: DESPESAS E EMPRÉSTIMOS -->
+        <!-- ABA 2: DESPESAS E EMPRÉSTIMOS (COM PARCELAMENTO) -->
         <div id="tab-despesas" class="tab-content">
             <div class="summary-grid">
                 <div class="summary-card"><div class="label">Total Devido</div><div class="value" id="desp-summary-total">R$ 0,00</div></div>
@@ -167,16 +167,17 @@
             <div class="card">
                 <div class="card-header"><div class="card-title">Nova Despesa / Empréstimo</div></div>
                 <div class="form-grid">
-                    <div class="form-group"><label>Descrição</label><input type="text" id="desp-desc" placeholder="Ex: Empréstimo 400"></div>
+                    <div class="form-group"><label>Descrição</label><input type="text" id="desp-desc" placeholder="Ex: Cartão de Crédito, TV"></div>
                     <div class="form-group"><label>Conta Pagadora</label>
                         <select id="desp-conta">
                             <option value="Conta A">Conta A (Fixa)</option>
                             <option value="Conta B">Conta B (Livre)</option>
                         </select>
                     </div>
-                    <div class="form-group"><label>Valor Principal (R$)</label><input type="number" id="desp-valor" step="0.01" placeholder="400.00"></div>
-                    <div class="form-group"><label>Vencimento</label><input type="date" id="desp-data"></div>
-                    <div class="form-group"><label>Taxa Juros (%)</label><input type="number" id="desp-juros" step="0.1" value="20.0"></div>
+                    <div class="form-group"><label>Valor Total (R$)</label><input type="number" id="desp-valor" step="0.01" placeholder="1200.00"></div>
+                    <div class="form-group"><label>Nº de Parcelas</label><input type="number" id="desp-parcelas" min="1" max="60" value="1" placeholder="1"></div>
+                    <div class="form-group"><label>1º Vencimento</label><input type="date" id="desp-data"></div>
+                    <div class="form-group"><label>Taxa Juros (%)</label><input type="number" id="desp-juros" step="0.1" value="0.0"></div>
                 </div>
                 <button class="btn" onclick="salvarDespesa()">+ Salvar Lançamento</button>
             </div>
@@ -204,7 +205,7 @@
 
     </div>
 
-    <!-- MODAL DE ROLAGEM -->
+    <!-- MODAL DE ROLAGEM / BAIXA -->
     <div id="modal-liquidar" class="modal-overlay" style="display: none;">
         <div class="modal-card">
             <h3 style="margin-bottom: 8px;">💰 Pagamento / Rolagem de Juros</h3>
@@ -305,10 +306,24 @@
             reader.readAsText(file);
         }
 
-        /* FUNÇÕES AUXILIARES */
+        /* FUNÇÕES AUXILIARES DE DATA E MOEDA */
         function formatMoney(val) { return (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
         function formatDate(dateStr) { if(!dateStr) return '-'; const [y, m, d] = dateStr.split('-'); return `${d}/${m}/${y}`; }
         function somar30Dias(dataISO) { let [y, m, d] = dataISO.split('-').map(Number); let dt = new Date(y, m - 1, d); dt.setDate(dt.getDate() + 30); return dt.toISOString().split('T')[0]; }
+        
+        /* CÁLCULO INTELIGENTE DE MESES PARA PARCELAS */
+        function somarMeses(dataISO, qtdMeses) {
+            if (!dataISO) return getTodayISO();
+            let [y, m, d] = dataISO.split('-').map(Number);
+            let dt = new Date(y, m - 1 + qtdMeses, d);
+            
+            // Tratamento para meses com menos dias (ex: 31 de janeiro + 1 mês -> final de fevereiro)
+            if (dt.getDate() !== d) {
+                dt.setDate(0); 
+            }
+            return dt.toISOString().split('T')[0];
+        }
+
         function calcularValores(principal, taxa) { let jurosVal = (principal * (taxa || 0)) / 100; return { principal, jurosVal, totalDevido: principal + jurosVal }; }
 
         /* RECEITAS */
@@ -352,28 +367,51 @@
             }
         }
 
-        /* DESPESAS */
+        /* DESPESAS COM SUPORTE A PARCELAMENTO */
         function salvarDespesa() {
             let desc = document.getElementById('desp-desc').value.trim();
             let conta = document.getElementById('desp-conta').value;
-            let valorBase = parseFloat(document.getElementById('desp-valor').value);
+            let valorTotal = parseFloat(document.getElementById('desp-valor').value);
+            let parcelas = parseInt(document.getElementById('desp-parcelas').value) || 1;
             let data = document.getElementById('desp-data').value;
             let juros = parseFloat(document.getElementById('desp-juros').value) || 0;
 
-            if (!desc || isNaN(valorBase) || valorBase <= 0) return alert('Preencha os campos corretamente!');
+            if (!desc || isNaN(valorTotal) || valorTotal <= 0) return alert('Preencha a descrição e o valor corretamente!');
 
-            despesas.push({ id: Date.now(), desc, conta, valorBase, data, juros, pagamentos: [] });
+            let valorParcela = valorTotal / parcelas;
+            let timestampBase = Date.now();
+
+            for (let i = 0; i < parcelas; i++) {
+                let dataVenc = somarMeses(data, i);
+                let descFinal = parcelas > 1 ? `${desc} (${i + 1}/${parcelas})` : desc;
+
+                despesas.push({
+                    id: timestampBase + i,
+                    desc: descFinal,
+                    conta: conta,
+                    valorBase: parseFloat(valorParcela.toFixed(2)),
+                    data: dataVenc,
+                    juros: juros,
+                    pagamentos: []
+                });
+            }
+
             document.getElementById('desp-desc').value = '';
             document.getElementById('desp-valor').value = '';
+            document.getElementById('desp-parcelas').value = '1';
 
             salvarDadosLocalmente();
             renderDespesas();
+            mostrarToast(parcelas > 1 ? `Lançadas ${parcelas} parcelas!` : "Despesa lançada!");
         }
 
         function renderDespesas() {
             let tbody = document.getElementById('tabela-despesas');
             tbody.innerHTML = '';
             let totalGeral = 0, totalVencidas = 0, totalLiquidadas = 0;
+
+            // Ordena por data de vencimento
+            despesas.sort((a, b) => a.data.localeCompare(b.data));
 
             despesas.forEach(item => {
                 let c = calcularValores(item.valorBase, item.juros);
@@ -430,7 +468,7 @@
                 <strong style="color:var(--primary)">Total Devido Hoje: ${formatMoney(c.totalDevido)}</strong>
             `;
 
-            document.getElementById('modal-valor-pago').value = c.jurosVal.toFixed(2);
+            document.getElementById('modal-valor-pago').value = c.totalDevido.toFixed(2);
             document.getElementById('modal-data-liquidacao').value = hoy;
 
             simularBaixaModal();
