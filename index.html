@@ -131,7 +131,7 @@
         <!-- ABA 1: RECEITAS -->
         <div id="tab-receitas" class="tab-content active">
             <div class="card">
-                <div class="card-header"><div class="card-title">Nova Receita</div></div>
+                <div class="card-header"><div class="card-title" id="title-rec-form">Nova Receita</div></div>
                 <div class="form-grid">
                     <div class="form-group"><label>Descrição</label><input type="text" id="rec-desc" placeholder="Ex: Salário, Freelance"></div>
                     <div class="form-group"><label>Valor (R$)</label><input type="number" id="rec-valor" step="0.01" placeholder="4500.00"></div>
@@ -143,7 +143,10 @@
                         </select>
                     </div>
                 </div>
-                <button class="btn btn-success" onclick="salvarReceita()">+ Salvar Receita</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-success" id="btn-salvar-rec" onclick="salvarReceita()">+ Salvar Receita</button>
+                    <button class="btn btn-cancel" id="btn-cancelar-rec" style="display: none;" onclick="cancelarEdicaoReceita()">Cancelar</button>
+                </div>
             </div>
 
             <div class="card">
@@ -156,7 +159,7 @@
             </div>
         </div>
 
-        <!-- ABA 2: DESPESAS E EMPRÉSTIMOS (COM PARCELAMENTO) -->
+        <!-- ABA 2: DESPESAS E EMPRÉSTIMOS -->
         <div id="tab-despesas" class="tab-content">
             <div class="summary-grid">
                 <div class="summary-card"><div class="label">Total Devido</div><div class="value" id="desp-summary-total">R$ 0,00</div></div>
@@ -165,21 +168,31 @@
             </div>
 
             <div class="card">
-                <div class="card-header"><div class="card-title">Nova Despesa / Empréstimo</div></div>
+                <div class="card-header"><div class="card-title" id="title-desp-form">Nova Despesa / Empréstimo</div></div>
                 <div class="form-grid">
-                    <div class="form-group"><label>Descrição</label><input type="text" id="desp-desc" placeholder="Ex: Cartão de Crédito, TV"></div>
+                    <div class="form-group"><label>Descrição</label><input type="text" id="desp-desc" placeholder="Ex: Cartão, Aluguel, Empréstimo"></div>
                     <div class="form-group"><label>Conta Pagadora</label>
                         <select id="desp-conta">
                             <option value="Conta A">Conta A (Fixa)</option>
                             <option value="Conta B">Conta B (Livre)</option>
                         </select>
                     </div>
-                    <div class="form-group"><label>Valor Total (R$)</label><input type="number" id="desp-valor" step="0.01" placeholder="1200.00"></div>
-                    <div class="form-group"><label>Nº de Parcelas</label><input type="number" id="desp-parcelas" min="1" max="60" value="1" placeholder="1"></div>
-                    <div class="form-group"><label>1º Vencimento</label><input type="date" id="desp-data"></div>
+                    <div class="form-group"><label>Tipo de Lançamento</label>
+                        <select id="desp-tipo" onchange="toggleTipoDespesa()">
+                            <option value="unica">À vista / Única</option>
+                            <option value="parcelada">Parcelada (Dividir valor total)</option>
+                            <option value="fixa">Fixa Recorrente (Repetir 12 meses)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label id="lbl-desp-valor">Valor (R$)</label><input type="number" id="desp-valor" step="0.01" placeholder="1000.00"></div>
+                    <div class="form-group" id="group-parcelas" style="display: none;"><label>Nº de Parcelas</label><input type="number" id="desp-parcelas" min="2" max="60" value="2"></div>
+                    <div class="form-group"><label>Vencimento</label><input type="date" id="desp-data"></div>
                     <div class="form-group"><label>Taxa Juros (%)</label><input type="number" id="desp-juros" step="0.1" value="0.0"></div>
                 </div>
-                <button class="btn" onclick="salvarDespesa()">+ Salvar Lançamento</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" id="btn-salvar-desp" onclick="salvarDespesa()">+ Salvar Lançamento</button>
+                    <button class="btn btn-cancel" id="btn-cancelar-desp" style="display: none;" onclick="cancelarEdicaoDespesa()">Cancelar</button>
+                </div>
             </div>
 
             <div class="card">
@@ -244,6 +257,8 @@
         let receitas = [];
         let despesas = [];
         let itemParaLiquidar = null;
+        let editReceitaId = null;
+        let editDespesaId = null;
 
         function getTodayISO() { return new Date().toISOString().split('T')[0]; }
         const hoy = getTodayISO();
@@ -260,7 +275,7 @@
         function salvarDadosLocalmente() {
             localStorage.setItem('gestao_receitas', JSON.stringify(receitas));
             localStorage.setItem('gestao_despesas', JSON.stringify(despesas));
-            mostrarToast("Salvo no tablet!");
+            mostrarToast("Dados salvos no tablet!");
         }
 
         function carregarDadosLocalmente() {
@@ -311,16 +326,11 @@
         function formatDate(dateStr) { if(!dateStr) return '-'; const [y, m, d] = dateStr.split('-'); return `${d}/${m}/${y}`; }
         function somar30Dias(dataISO) { let [y, m, d] = dataISO.split('-').map(Number); let dt = new Date(y, m - 1, d); dt.setDate(dt.getDate() + 30); return dt.toISOString().split('T')[0]; }
         
-        /* CÁLCULO INTELIGENTE DE MESES PARA PARCELAS */
         function somarMeses(dataISO, qtdMeses) {
             if (!dataISO) return getTodayISO();
             let [y, m, d] = dataISO.split('-').map(Number);
             let dt = new Date(y, m - 1 + qtdMeses, d);
-            
-            // Tratamento para meses com menos dias (ex: 31 de janeiro + 1 mês -> final de fevereiro)
-            if (dt.getDate() !== d) {
-                dt.setDate(0); 
-            }
+            if (dt.getDate() !== d) { dt.setDate(0); }
             return dt.toISOString().split('T')[0];
         }
 
@@ -335,12 +345,51 @@
 
             if (!desc || isNaN(valor) || valor <= 0) return alert('Preencha os campos corretamente!');
 
-            receitas.push({ id: Date.now(), desc, valor, data, conta });
+            if (editReceitaId !== null) {
+                let rec = receitas.find(r => r.id === editReceitaId);
+                if (rec) {
+                    rec.desc = desc;
+                    rec.valor = valor;
+                    rec.data = data;
+                    rec.conta = conta;
+                    mostrarToast("Receita atualizada!");
+                }
+                cancelarEdicaoReceita();
+            } else {
+                receitas.push({ id: Date.now(), desc, valor, data, conta });
+                mostrarToast("Receita salva!");
+            }
+
             document.getElementById('rec-desc').value = '';
             document.getElementById('rec-valor').value = '';
 
             salvarDadosLocalmente();
             renderReceitas();
+        }
+
+        function editarReceita(id) {
+            let item = receitas.find(r => r.id === id);
+            if (!item) return;
+
+            editReceitaId = id;
+            document.getElementById('rec-desc').value = item.desc;
+            document.getElementById('rec-valor').value = item.valor;
+            document.getElementById('rec-data').value = item.data;
+            document.getElementById('rec-conta').value = item.conta;
+
+            document.getElementById('title-rec-form').innerText = "✏️ Editar Receita";
+            document.getElementById('btn-salvar-rec').innerText = "💾 Atualizar Receita";
+            document.getElementById('btn-cancelar-rec').style.display = "inline-flex";
+        }
+
+        function cancelarEdicaoReceita() {
+            editReceitaId = null;
+            document.getElementById('rec-desc').value = '';
+            document.getElementById('rec-valor').value = '';
+            document.getElementById('rec-data').value = hoy;
+            document.getElementById('title-rec-form').innerText = "Nova Receita";
+            document.getElementById('btn-salvar-rec').innerText = "+ Salvar Receita";
+            document.getElementById('btn-cancelar-rec').style.display = "none";
         }
 
         function renderReceitas() {
@@ -353,7 +402,10 @@
                     <td><strong>${item.desc}</strong></td>
                     <td><span class="tag tag-blue">${item.conta}</span></td>
                     <td><strong style="color:var(--success)">${formatMoney(item.valor)}</strong></td>
-                    <td><button class="btn btn-danger btn-sm" onclick="removerReceita(${item.id})">✕</button></td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="editarReceita(${item.id})">✏️ Editar</button>
+                        <button class="btn btn-danger btn-sm" onclick="removerReceita(${item.id})">✕</button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -367,42 +419,136 @@
             }
         }
 
-        /* DESPESAS COM SUPORTE A PARCELAMENTO */
+        /* DESPESAS */
+        function toggleTipoDespesa() {
+            let tipo = document.getElementById('desp-tipo').value;
+            let groupParcelas = document.getElementById('group-parcelas');
+            let lblValor = document.getElementById('lbl-desp-valor');
+
+            if (tipo === 'parcelada') {
+                groupParcelas.style.display = 'flex';
+                lblValor.innerText = "Valor Total (R$)";
+            } else if (tipo === 'fixa') {
+                groupParcelas.style.display = 'none';
+                lblValor.innerText = "Valor Mensal (R$)";
+            } else {
+                groupParcelas.style.display = 'none';
+                lblValor.innerText = "Valor (R$)";
+            }
+        }
+
         function salvarDespesa() {
             let desc = document.getElementById('desp-desc').value.trim();
             let conta = document.getElementById('desp-conta').value;
-            let valorTotal = parseFloat(document.getElementById('desp-valor').value);
-            let parcelas = parseInt(document.getElementById('desp-parcelas').value) || 1;
+            let tipo = document.getElementById('desp-tipo').value;
+            let valorInput = parseFloat(document.getElementById('desp-valor').value);
             let data = document.getElementById('desp-data').value;
             let juros = parseFloat(document.getElementById('desp-juros').value) || 0;
 
-            if (!desc || isNaN(valorTotal) || valorTotal <= 0) return alert('Preencha a descrição e o valor corretamente!');
+            if (!desc || isNaN(valorInput) || valorInput <= 0) return alert('Preencha a descrição e o valor corretamente!');
 
-            let valorParcela = valorTotal / parcelas;
-            let timestampBase = Date.now();
+            // EDIÇÃO DE UM ITEM EXISTENTE
+            if (editDespesaId !== null) {
+                let item = despesas.find(d => d.id === editDespesaId);
+                if (item) {
+                    item.desc = desc;
+                    item.conta = conta;
+                    item.valorBase = valorInput;
+                    item.data = data;
+                    item.juros = juros;
+                    mostrarToast("Despesa atualizada!");
+                }
+                cancelarEdicaoDespesa();
+            } else {
+                // NOVO LANÇAMENTO
+                let timestampBase = Date.now();
 
-            for (let i = 0; i < parcelas; i++) {
-                let dataVenc = somarMeses(data, i);
-                let descFinal = parcelas > 1 ? `${desc} (${i + 1}/${parcelas})` : desc;
+                if (tipo === 'fixa') {
+                    // REPETIR MESMO VALOR POR 12 MESES
+                    for (let i = 0; i < 12; i++) {
+                        let dataVenc = somarMeses(data, i);
+                        despesas.push({
+                            id: timestampBase + i,
+                            desc: `${desc} (Fixa ${i + 1}/12)`,
+                            conta: conta,
+                            valorBase: parseFloat(valorInput.toFixed(2)),
+                            data: dataVenc,
+                            juros: juros,
+                            pagamentos: []
+                        });
+                    }
+                    mostrarToast("Lançadas 12 parcelas fixas!");
+                } else if (tipo === 'parcelada') {
+                    // DIVIDIR O VALOR TOTAL EM N PARCELAS
+                    let parcelas = parseInt(document.getElementById('desp-parcelas').value) || 2;
+                    let valorParcela = valorInput / parcelas;
 
-                despesas.push({
-                    id: timestampBase + i,
-                    desc: descFinal,
-                    conta: conta,
-                    valorBase: parseFloat(valorParcela.toFixed(2)),
-                    data: dataVenc,
-                    juros: juros,
-                    pagamentos: []
-                });
+                    for (let i = 0; i < parcelas; i++) {
+                        let dataVenc = somarMeses(data, i);
+                        despesas.push({
+                            id: timestampBase + i,
+                            desc: `${desc} (${i + 1}/${parcelas})`,
+                            conta: conta,
+                            valorBase: parseFloat(valorParcela.toFixed(2)),
+                            data: dataVenc,
+                            juros: juros,
+                            pagamentos: []
+                        });
+                    }
+                    mostrarToast(`Lançadas ${parcelas} parcelas!`);
+                } else {
+                    // LANÇAMENTO ÚNICO
+                    despesas.push({
+                        id: timestampBase,
+                        desc: desc,
+                        conta: conta,
+                        valorBase: parseFloat(valorInput.toFixed(2)),
+                        data: data,
+                        juros: juros,
+                        pagamentos: []
+                    });
+                    mostrarToast("Despesa salva!");
+                }
             }
 
             document.getElementById('desp-desc').value = '';
             document.getElementById('desp-valor').value = '';
-            document.getElementById('desp-parcelas').value = '1';
+            document.getElementById('desp-tipo').value = 'unica';
+            toggleTipoDespesa();
 
             salvarDadosLocalmente();
             renderDespesas();
-            mostrarToast(parcelas > 1 ? `Lançadas ${parcelas} parcelas!` : "Despesa lançada!");
+        }
+
+        function editarDespesa(id) {
+            let item = despesas.find(d => d.id === id);
+            if (!item) return;
+
+            editDespesaId = id;
+            document.getElementById('desp-desc').value = item.desc;
+            document.getElementById('desp-conta').value = item.conta;
+            document.getElementById('desp-valor').value = item.valorBase;
+            document.getElementById('desp-data').value = item.data;
+            document.getElementById('desp-juros').value = item.juros;
+            document.getElementById('desp-tipo').value = 'unica';
+            toggleTipoDespesa();
+
+            document.getElementById('title-desp-form').innerText = "✏️ Editar Despesa";
+            document.getElementById('btn-salvar-desp').innerText = "💾 Atualizar Despesa";
+            document.getElementById('btn-cancelar-desp').style.display = "inline-flex";
+        }
+
+        function cancelarEdicaoDespesa() {
+            editDespesaId = null;
+            document.getElementById('desp-desc').value = '';
+            document.getElementById('desp-valor').value = '';
+            document.getElementById('desp-data').value = hoy;
+            document.getElementById('desp-tipo').value = 'unica';
+            toggleTipoDespesa();
+
+            document.getElementById('title-desp-form').innerText = "Nova Despesa / Empréstimo";
+            document.getElementById('btn-salvar-desp').innerText = "+ Salvar Lançamento";
+            document.getElementById('btn-cancelar-desp').style.display = "none";
         }
 
         function renderDespesas() {
@@ -410,7 +556,6 @@
             tbody.innerHTML = '';
             let totalGeral = 0, totalVencidas = 0, totalLiquidadas = 0;
 
-            // Ordena por data de vencimento
             despesas.sort((a, b) => a.data.localeCompare(b.data));
 
             despesas.forEach(item => {
@@ -435,6 +580,7 @@
                     <td>${isLiquidado ? '<span class="tag tag-green">QUITADO</span>' : (isVencida ? '<span class="tag tag-red">VENCIDO</span>' : '<span class="tag tag-amber">PENDENTE</span>')}</td>
                     <td>
                         ${!isLiquidado ? `<button class="btn btn-sm btn-success" onclick="abrirModalLiquidar(${item.id})">💰 Baixar</button>` : ''}
+                        <button class="btn btn-warning btn-sm" onclick="editarDespesa(${item.id})">✏️ Editar</button>
                         <button class="btn btn-danger btn-sm" onclick="removerDespesa(${item.id})">✕</button>
                     </td>
                 `;
