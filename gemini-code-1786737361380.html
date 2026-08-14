@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Financeira & Nuvem OneDrive</title>
+
+    <!-- SDK Oficial de Autenticação Microsoft (MSAL Browser v2) -->
+    <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eff6ff;
+            --success: #10b981;
+            --success-light: #ecfdf5;
+            --warning: #f59e0b;
+            --warning-light: #fffbeb;
+            --danger: #ef4444;
+            --danger-light: #fef2f2;
+            --border: #e2e8f0;
+            --radius: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg); color: var(--text-main); line-height: 1.5; padding: 24px 16px; }
+        .container { max-width: 1180px; margin: 0 auto; }
+
+        /* PAINEL DE CONEXÃO ODRIVE */
+        .cloud-banner {
+            background: linear-gradient(135deg, #0078d4, #005a9e);
+            color: white;
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0, 120, 212, 0.2);
+        }
+
+        .cloud-info { display: flex; align-items: center; gap: 10px; }
+        .cloud-info h3 { font-size: 1rem; font-weight: 700; }
+        .cloud-info p { font-size: 0.8rem; opacity: 0.9; }
+
+        .cloud-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .cloud-controls input {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.15);
+            color: white;
+            font-size: 0.85rem;
+            outline: none;
+            width: 260px;
+        }
+        .cloud-controls input::placeholder { color: rgba(255,255,255,0.7); }
+
+        /* DEMAIS ESTILOS */
+        header { text-align: center; margin-bottom: 20px; }
+        header h1 { font-size: 1.8rem; font-weight: 800; }
+        
+        .nav-tabs { display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+        .tab-btn { background: transparent; border: none; padding: 10px 18px; font-size: 0.95rem; font-weight: 700; color: var(--text-muted); cursor: pointer; border-radius: 8px; }
+        .tab-btn.active { background: var(--primary); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .card-title { font-size: 1.1rem; font-weight: 700; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 0.85rem; font-weight: 600; }
+        input[type="text"], input[type="number"], input[type="date"], select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; outline: none; }
+
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-danger { background: var(--danger); }
+        .btn-cancel { background: var(--text-muted); color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+        .btn-light { background: white; color: #0078d4; font-weight: 700; }
+
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .summary-card { background: var(--card-bg); padding: 20px; border-radius: var(--radius); border: 1px solid var(--border); }
+        .summary-card .label { font-size: 0.82rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+        .summary-card .value { font-size: 1.5rem; font-weight: 700; }
+
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+        th { background: var(--bg); font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; }
+
+        .tag { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+        .tag-blue { background: var(--primary-light); color: var(--primary); }
+        .tag-green { background: var(--success-light); color: var(--success); }
+        .tag-amber { background: var(--warning-light); color: #d97706; }
+        .tag-red { background: var(--danger-light); color: var(--danger); }
+
+        /* MODAIS */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(3px); }
+        .modal-card { background: var(--card-bg); padding: 24px; border-radius: var(--radius); width: 100%; max-width: 520px; border: 1px solid var(--border); }
+        .calc-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; font-size: 0.85rem; }
+        .calc-box div { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        
+        #toast { position: fixed; bottom: 20px; right: 20px; background: #0f172a; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.88rem; display: none; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- PAINEL SUPERIOR: SINCRONIZAÇÃO NUVEM ONEDRIVE -->
+        <div class="cloud-banner">
+            <div class="cloud-info">
+                <span style="font-size: 1.5rem;">☁️</span>
+                <div>
+                    <h3>Sincronização Microsoft OneDrive</h3>
+                    <p id="ms-status">Status: Não Conectado (Armazenamento Local Ativo)</p>
+                </div>
+            </div>
+
+            <div class="cloud-controls">
+                <input type="text" id="ms-client-id" placeholder="Cole sua Client ID da Microsoft">
+                <button class="btn btn-light" id="btn-ms-login" onclick="conectarOneDrive()">🔑 Entrar no OneDrive</button>
+                <button class="btn btn-cancel btn-sm" id="btn-ms-logout" style="display:none;" onclick="desconectarOneDrive()">Sair</button>
+            </div>
+        </div>
+
+        <header>
+            <h1>Gestão Financeira & Rolagem de Juros</h1>
+            <p>Controle de Empréstimos, Amortização e Sincronização Direta na Nuvem</p>
+        </header>
+
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('tab-receitas')">💰 Receitas</button>
+            <button class="tab-btn" onclick="switchTab('tab-despesas')">💳 Despesas e Empréstimos</button>
+            <button class="tab-btn" onclick="switchTab('tab-fluxo')">📊 Fluxo de Caixa Integrado</button>
+        </div>
+
+        <!-- ABA 1: RECEITAS -->
+        <div id="tab-receitas" class="tab-content active">
+            <div class="card">
+                <div class="card-header"><div class="card-title">Nova Receita</div></div>
+                <div class="form-grid">
+                    <input type="hidden" id="rec-edit-id">
+                    <div class="form-group"><label>Descrição</label><input type="text" id="rec-desc" placeholder="Ex: Salário, Freelance"></div>
+                    <div class="form-group"><label>Valor (R$)</label><input type="number" id="rec-valor" step="0.01" placeholder="4500.00"></div>
+                    <div class="form-group"><label>Data</label><input type="date" id="rec-data"></div>
+                    <div class="form-group"><label>Conta</label>
+                        <select id="rec-conta">
+                            <option value="Conta A">Conta A (Entradas)</option>
+                            <option value="Conta B">Conta B (Variável)</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="salvarReceita()">+ Salvar Receita</button>
+            </div>
+
+            <div class="card">
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Data</th><th>Descrição</th><th>Conta</th><th>Valor</th><th>Ações</th></tr></thead>
+                        <tbody id="tabela-receitas"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 2: DESPESAS E EMPRÉSTIMOS -->
+        <div id="tab-despesas" class="tab-content">
+            <div class="summary-grid">
+                <div class="summary-card"><div class="label">Total Devido</div><div class="value" id="desp-summary-total">R$ 0,00</div></div>
+                <div class="summary-card" style="border-left: 4px solid var(--danger);"><div class="label" style="color:var(--danger)">Vencidos</div><div class="value" id="desp-summary-vencidas" style="color:var(--danger)">R$ 0,00</div></div>
+                <div class="summary-card" style="border-left: 4px solid var(--success);"><div class="label" style="color:var(--success)">Total Baixado/Pago</div><div class="value" id="desp-summary-liquidadas" style="color:var(--success)">R$ 0,00</div></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><div class="card-title">Nova Despesa / Empréstimo</div></div>
+                <div class="form-grid">
+                    <input type="hidden" id="desp-edit-id">
+                    <div class="form-group"><label>Descrição</label><input type="text" id="desp-desc" placeholder="Ex: Empréstimo 400 a 20%"></div>
+                    <div class="form-group"><label>Conta Pagadora</label>
+                        <select id="desp-conta">
+                            <option value="Conta A">Conta A (Fixa)</option>
+                            <option value="Conta B">Conta B (Livre)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Valor Principal (R$)</label><input type="number" id="desp-valor" step="0.01" placeholder="400.00"></div>
+                    <div class="form-group"><label>Vencimento</label><input type="date" id="desp-data"></div>
+                    <div class="form-group"><label>Taxa Juros por Período (%)</label><input type="number" id="desp-juros" step="0.1" value="20.0"></div>
+                </div>
+                <button class="btn" onclick="salvarDespesa()">+ Salvar Lançamento</button>
+            </div>
+
+            <div class="card">
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Vencimento</th><th>Descrição</th><th>Principal Atual</th><th>Juros (%)</th><th>Total Devido</th><th>Status</th><th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-despesas"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 3: FLUXO DE CAIXA -->
+        <div id="tab-fluxo" class="tab-content">
+            <div class="summary-grid">
+                <div class="summary-card"><div class="label">Receitas (Conta A)</div><div class="value" id="fc-total-receitas" style="color:var(--success)">R$ 0,00</div></div>
+                <div class="summary-card"><div class="label">Compromissos Restantes</div><div class="value" id="fc-compromissos-a" style="color:var(--danger)">R$ 0,00</div></div>
+                <div class="summary-card" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color:white;"><div class="label" style="color:#bfdbfe">Saldo Livre (Conta B)</div><div class="value" id="fc-disponivel-b">R$ 0,00</div></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL DE LIQUIDAÇÃO E ROLAGEM -->
+    <div id="modal-liquidar" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <h3 style="margin-bottom: 8px;">💰 Pagamento / Rolagem de Juros</h3>
+            <div id="modal-liquidar-info" style="font-size:0.85rem; background:var(--bg); padding:10px; border-radius:8px; margin-bottom:12px;"></div>
+            
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label>Valor Pago Neste Ciclo (R$)</label>
+                <input type="number" id="modal-valor-pago" step="0.01" oninput="simularBaixaModal()">
+            </div>
+
+            <div class="calc-box">
+                <div><span>Juros do Período:</span> <strong id="mb-juros-periodo" style="color:var(--danger)">R$ 0,00</strong></div>
+                <div><span>Abatimento dos Juros:</span> <strong id="mb-abat-juros" style="color:var(--success)">R$ 0,00</strong></div>
+                <div><span>Amortização do Principal:</span> <strong id="mb-amort-principal" style="color:var(--success)">R$ 0,00</strong></div>
+                <hr style="margin: 6px 0; border: none; border-top: 1px dashed var(--border);">
+                <div><span>Novo Saldo Principal:</span> <strong id="mb-novo-principal">R$ 0,00</strong></div>
+                <div><span>Total Devido (+30 Dias):</span> <strong id="mb-novo-total-proj" style="color:var(--primary)">R$ 0,00</strong></div>
+            </div>
+
+            <div class="form-group" style="margin-top: 12px; margin-bottom: 16px;">
+                <label>Data do Pagamento</label>
+                <input type="date" id="modal-data-liquidacao">
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn btn-cancel" onclick="fecharModalLiquidar()">Cancelar</button>
+                <button class="btn btn-warning" onclick="confirmarBaixa(true)">🔄 Pagar e Renovar (+30 Dias)</button>
+                <button class="btn btn-success" onclick="confirmarBaixa(false)">✅ Quitar Totalmente</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Notificação</div>
+
+    <script>
+        /* =============================================================
+           1. INTEGRAÇÃO MICROSOFT GRAPH & ONEDRIVE (OAUTH 2.0 PKCE)
+           ============================================================= */
+        let msalInstance = null;
+        let account = null;
+
+        const loginScopes = { scopes: ["User.Read", "Files.ReadWrite"] };
+
+        function getTodayISO() {
+            return new Date().toISOString().split('T')[0];
+        }
+        const hoy = getTodayISO();
+
+        // Carrega ClientID salvo se houver
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('rec-data').value = hoy;
+            document.getElementById('desp-data').value = hoy;
+
+            const savedClientId = localStorage.getItem('ms_client_id');
+            if (savedClientId) {
+                document.getElementById('ms-client-id').value = savedClientId;
+                await inicializarMSAL(savedClientId);
+            }
+
+            carregarDadosLocalmente();
+            renderReceitas();
+            renderDespesas();
+        });
+
+        async function inicializarMSAL(clientId) {
+            const msalConfig = {
+                auth: {
+                    clientId: clientId,
+                    authority: "https://login.microsoftonline.com/common",
+                    redirectUri: window.location.href.split('?')[0].split('#')[0]
+                },
+                cache: { cacheLocation: "sessionStorage" }
+            };
+
+            try {
+                msalInstance = new msal.PublicClientApplication(msalConfig);
+                await msalInstance.initialize();
+
+                const currentAccounts = msalInstance.getAllAccounts();
+                if (currentAccounts.length > 0) {
+                    account = currentAccounts[0];
+                    atualizarStatusAuth(true);
+                    await carregarDoOneDrive();
+                }
+            } catch (err) {
+                console.error("Erro ao inicializar MSAL:", err);
+            }
+        }
+
+        async function conectarOneDrive() {
+            const clientId = document.getElementById('ms-client-id').value.trim();
+            if (!clientId) {
+                alert("Por favor, cole sua 'Client ID' da Microsoft registrada no portal Azure.");
+                return;
+            }
+
+            localStorage.setItem('ms_client_id', clientId);
+            if (!msalInstance) await inicializarMSAL(clientId);
+
+            try {
+                const loginResponse = await msalInstance.loginPopup(loginScopes);
+                account = loginResponse.account;
+                atualizarStatusAuth(true);
+                mostrarToast("Conectado à conta Microsoft!");
+                await carregarDoOneDrive();
+            } catch (err) {
+                console.error("Erro no login:", err);
+                alert("Erro ao autenticar: " + err.message);
+            }
+        }
+
+        function desconectarOneDrive() {
+            if (msalInstance) msalInstance.logoutPopup();
+            account = null;
+            atualizarStatusAuth(false);
+        }
+
+        function atualizarStatusAuth(conectado) {
+            const statusEl = document.getElementById('ms-status');
+            const btnLogin = document.getElementById('btn-ms-login');
+            const btnLogout = document.getElementById('btn-ms-logout');
+
+            if (conectado && account) {
+                statusEl.innerText = `🟢 Conectado: ${account.username} (Sincronizado com OneDrive)`;
+                btnLogin.style.display = 'none';
+                btnLogout.style.display = 'inline-flex';
+            } else {
+                statusEl.innerText = 'Status: Não Conectado (Usando Armazenamento Local)';
+                btnLogin.style.display = 'inline-flex';
+                btnLogout.style.display = 'none';
+            }
+        }
+
+        async function getToken() {
+            if (!msalInstance || !account) return null;
+            try {
+                const response = await msalInstance.acquireTokenSilent({ ...loginScopes, account });
+                return response.accessToken;
+            } catch (error) {
+                const response = await msalInstance.acquireTokenPopup(loginScopes);
+                return response.accessToken;
+            }
+        }
+
+        /* LER ARQUIVO DO ONEDRIVE */
+        async function carregarDoOneDrive() {
+            const token = await getToken();
+            if (!token) return;
+
+            try {
+                mostrarToast("Buscando dados no OneDrive...");
+                const response = await fetch("https://graph.microsoft.com/v1.0/me/drive/root:/dados_financeiros.json:/content", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (response.status === 404) {
+                    mostrarToast("Criando novo arquivo no seu OneDrive...");
+                    await salvarNoOneDrive(); // Cria na primeira vez
+                    return;
+                }
+
+                if (response.ok) {
+                    const dados = await response.json();
+                    if (dados.receitas && dados.despesas) {
+                        receitas = dados.receitas;
+                        despesas = dados.despesas;
+                        salvarDadosLocalmente();
+                        renderReceitas();
+                        renderDespesas();
+                        mostrarToast("✅ Dados atualizados do OneDrive!");
+                    }
+                }
+            } catch (err) {
+                console.error("Erro ao ler OneDrive:", err);
+            }
+        }
+
+        /* SALVAR ARQUIVO NO ONEDRIVE */
+        async function salvarNoOneDrive() {
+            salvarDadosLocalmente(); // Mantém cópia local
+            const token = await getToken();
+            if (!token) return;
+
+            try {
+                const dadosStr = JSON.stringify({ receitas, despesas }, null, 2);
+                const response = await fetch("https://graph.microsoft.com/v1.0/me/drive/root:/dados_financeiros.json:/content", {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: dadosStr
+                });
+
+                if (response.ok) {
+                    mostrarToast("☁️ Salvo no OneDrive!");
+                }
+            } catch (err) {
+                console.error("Erro ao gravar no OneDrive:", err);
+            }
+        }
+
+        /* =============================================================
+           2. REGRAS DE NEGÓCIO FINANCEIRO & INTERFACE
+           ============================================================= */
+        let receitas = [];
+        let despesas = [];
+        let itemParaLiquidar = null;
+
+        function salvarDadosLocalmente() {
+            localStorage.setItem('gestao_receitas', JSON.stringify(receitas));
+            localStorage.setItem('gestao_despesas', JSON.stringify(despesas));
+        }
+
+        function carregarDadosLocalmente() {
+            const r = localStorage.getItem('gestao_receitas');
+            const d = localStorage.getItem('gestao_despesas');
+            if (r) receitas = JSON.parse(r);
+            if (d) despesas = JSON.parse(d);
+        }
+
+        async function notificarEGuardar() {
+            if (account) {
+                await salvarNoOneDrive();
+            } else {
+                salvarDadosLocalmente();
+                mostrarToast("Salvo localmente!");
+            }
+        }
+
+        function formatMoney(val) {
+            return (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function formatDate(dateStr) {
+            if(!dateStr) return '-';
+            const [y, m, d] = dateStr.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        function somar30Dias(dataISO) {
+            let [y, m, d] = dataISO.split('-').map(Number);
+            let dt = new Date(y, m - 1, d);
+            dt.setDate(dt.getDate() + 30);
+            return dt.toISOString().split('T')[0];
+        }
+
+        function calcularValores(principal, taxa) {
+            let jurosVal = (principal * (taxa || 0)) / 100;
+            return { principal, jurosVal, totalDevido: principal + jurosVal };
+        }
+
+        /* RECEITAS */
+        async function salvarReceita() {
+            let desc = document.getElementById('rec-desc').value.trim();
+            let valor = parseFloat(document.getElementById('rec-valor').value);
+            let data = document.getElementById('rec-data').value;
+            let conta = document.getElementById('rec-conta').value;
+
+            if (!desc || isNaN(valor) || valor <= 0) return alert('Preencha os campos!');
+
+            receitas.push({ id: Date.now(), desc, valor, data, conta });
+            document.getElementById('rec-desc').value = '';
+            document.getElementById('rec-valor').value = '';
+
+            renderReceitas();
+            await notificarEGuardar();
+        }
+
+        function renderReceitas() {
+            let tbody = document.getElementById('tabela-receitas');
+            tbody.innerHTML = '';
+            receitas.forEach(item => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${formatDate(item.data)}</td>
+                    <td><strong>${item.desc}</strong></td>
+                    <td><span class="tag tag-blue">${item.conta}</span></td>
+                    <td><strong style="color:var(--success)">${formatMoney(item.valor)}</strong></td>
+                    <td><button class="btn btn-danger btn-sm" onclick="removerReceita(${item.id})">✕</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function removerReceita(id) {
+            if(confirm("Remover receita?")) {
+                receitas = receitas.filter(r => r.id !== id);
+                renderReceitas();
+                await notificarEGuardar();
+            }
+        }
+
+        /* DESPESAS & EMPRÉSTIMOS */
+        async function salvarDespesa() {
+            let desc = document.getElementById('desp-desc').value.trim();
+            let conta = document.getElementById('desp-conta').value;
+            let valorBase = parseFloat(document.getElementById('desp-valor').value);
+            let data = document.getElementById('desp-data').value;
+            let juros = parseFloat(document.getElementById('desp-juros').value) || 0;
+
+            if (!desc || isNaN(valorBase) || valorBase <= 0) return alert('Preencha os campos!');
+
+            despesas.push({ id: Date.now(), desc, conta, valorBase, data, juros, pagamentos: [] });
+            document.getElementById('desp-desc').value = '';
+            document.getElementById('desp-valor').value = '';
+
+            renderDespesas();
+            await notificarEGuardar();
+        }
+
+        function renderDespesas() {
+            let tbody = document.getElementById('tabela-despesas');
+            tbody.innerHTML = '';
+
+            let totalGeral = 0, totalVencidas = 0, totalLiquidadas = 0;
+
+            despesas.forEach(item => {
+                let c = calcularValores(item.valorBase, item.juros);
+                let pago = (item.pagamentos || []).reduce((acc, p) => acc + p.valorTotal, 0);
+
+                totalGeral += c.totalDevido;
+                totalLiquidadas += pago;
+
+                let isLiquidado = item.valorBase <= 0;
+                let isVencida = !isLiquidado && item.data < hoy;
+
+                if (isVencida) totalVencidas += c.totalDevido;
+
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${formatDate(item.data)}</strong></td>
+                    <td><strong>${item.desc}</strong></td>
+                    <td>${formatMoney(item.valorBase)}</td>
+                    <td>${item.juros}%</td>
+                    <td><strong style="color:var(--danger)">${formatMoney(c.totalDevido)}</strong></td>
+                    <td>${isLiquidado ? '<span class="tag tag-green">QUITADO</span>' : (isVencida ? '<span class="tag tag-red">VENCIDO</span>' : '<span class="tag tag-amber">PENDENTE</span>')}</td>
+                    <td>
+                        ${!isLiquidado ? `<button class="btn btn-sm btn-success" onclick="abrirModalLiquidar(${item.id})">💰 Pagar/Renovar</button>` : ''}
+                        <button class="btn btn-danger btn-sm" onclick="removerDespesa(${item.id})">✕</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('desp-summary-total').innerText = formatMoney(totalGeral);
+            document.getElementById('desp-summary-vencidas').innerText = formatMoney(totalVencidas);
+            document.getElementById('desp-summary-liquidadas').innerText = formatMoney(totalLiquidadas);
+        }
+
+        async function removerDespesa(id) {
+            if(confirm("Remover lançamento?")) {
+                despesas = despesas.filter(d => d.id !== id);
+                renderDespesas();
+                await notificarEGuardar();
+            }
+        }
+
+        /* LIQUIDAÇÃO / ROLAGEM DE JUROS */
+        function abrirModalLiquidar(id) {
+            let item = despesas.find(d => d.id === id);
+            if (!item) return;
+
+            let c = calcularValores(item.valorBase, item.juros);
+            itemParaLiquidar = { ...item, calc: c };
+
+            document.getElementById('modal-liquidar-info').innerHTML = `
+                <strong>${item.desc}</strong><br>
+                Principal: ${formatMoney(c.principal)} | Juros (${item.juros}%): ${formatMoney(c.jurosVal)}<br>
+                <strong style="color:var(--primary)">Total Devido Hoje: ${formatMoney(c.totalDevido)}</strong>
+            `;
+
+            document.getElementById('modal-valor-pago').value = c.jurosVal.toFixed(2);
+            document.getElementById('modal-data-liquidacao').value = hoy;
+
+            simularBaixaModal();
+            document.getElementById('modal-liquidar').style.display = 'flex';
+        }
+
+        function simularBaixaModal() {
+            if (!itemParaLiquidar) return;
+            let valPago = parseFloat(document.getElementById('modal-valor-pago').value) || 0;
+            let jurosVal = itemParaLiquidar.calc.jurosVal;
+            let principal = itemParaLiquidar.calc.principal;
+
+            let abatJuros = Math.min(valPago, jurosVal);
+            let amortPrincipal = Math.max(0, valPago - jurosVal);
+            let novoPrincipal = Math.max(0, principal - amortPrincipal);
+            let novoTotalProj = novoPrincipal + (novoPrincipal * itemParaLiquidar.juros / 100);
+
+            document.getElementById('mb-juros-periodo').innerText = formatMoney(jurosVal);
+            document.getElementById('mb-abat-juros').innerText = formatMoney(abatJuros);
+            document.getElementById('mb-amort-principal').innerText = formatMoney(amortPrincipal);
+            document.getElementById('mb-novo-principal').innerText = formatMoney(novoPrincipal);
+            document.getElementById('mb-novo-total-proj').innerText = formatMoney(novoTotalProj);
+        }
+
+        function fecharModalLiquidar() {
+            document.getElementById('modal-liquidar').style.display = 'none';
+        }
+
+        async function confirmarBaixa(manterRotativo) {
+            let valPago = parseFloat(document.getElementById('modal-valor-pago').value);
+            let dtPago = document.getElementById('modal-data-liquidacao').value;
+
+            if (isNaN(valPago) || valPago <= 0) return alert('Informe o valor pago!');
+
+            let item = despesas.find(d => d.id === itemParaLiquidar.id);
+            let jurosVal = itemParaLiquidar.calc.jurosVal;
+            let principal = itemParaLiquidar.calc.principal;
+
+            let abatJuros = Math.min(valPago, jurosVal);
+            let amortPrincipal = Math.max(0, valPago - jurosVal);
+            let novoPrincipal = Math.max(0, principal - amortPrincipal);
+
+            if (!item.pagamentos) item.pagamentos = [];
+            item.pagamentos.push({ valorTotal: valPago, valorJuros: abatJuros, valorPrincipal: amortPrincipal, data: dtPago });
+
+            if (manterRotativo && novoPrincipal > 0) {
+                item.valorBase = novoPrincipal;
+                item.data = somar30Dias(item.data);
+            } else {
+                item.valorBase = novoPrincipal;
+            }
+
+            fecharModalLiquidar();
+            renderDespesas();
+            await notificarEGuardar();
+        }
+
+        /* NAVEGAÇÃO */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+
+            let buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => {
+                if(btn.getAttribute('onclick').includes(tabId)) btn.classList.add('active');
+            });
+
+            if (tabId === 'tab-fluxo') atualizarFluxo();
+        }
+
+        function atualizarFluxo() {
+            let recA = receitas.filter(r => r.conta === 'Conta A').reduce((acc, r) => acc + r.valor, 0);
+            let despA = despesas.filter(d => d.conta === 'Conta A').reduce((acc, d) => acc + calcularValores(d.valorBase, d.juros).totalDevido, 0);
+
+            document.getElementById('fc-total-receitas').innerText = formatMoney(recA);
+            document.getElementById('fc-compromissos-a').innerText = formatMoney(despA);
+            document.getElementById('fc-disponivel-b').innerText = formatMoney(Math.max(0, recA - despA));
+        }
+
+        function mostrarToast(msg) {
+            let t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3000);
+        }
+    </script>
+</body>
+</html>
